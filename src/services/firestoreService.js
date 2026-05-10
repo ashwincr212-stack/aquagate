@@ -41,8 +41,14 @@ function withServerTimestamps(data, { isUpdate = false } = {}) {
 
 // Programs
 export async function getPrograms() {
-  const snapshot = await getDocs(query(collection(requireDb(), 'programs'), orderBy('createdAt', 'desc')))
-  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+  const snapshot = await getDocs(collection(requireDb(), 'programs'))
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .sort((left, right) => {
+      const leftMillis = typeof left.createdAt?.toMillis === 'function' ? left.createdAt.toMillis() : 0
+      const rightMillis = typeof right.createdAt?.toMillis === 'function' ? right.createdAt.toMillis() : 0
+      return rightMillis - leftMillis
+    })
 }
 
 export async function getActivePrograms() {
@@ -236,6 +242,17 @@ export async function getCandidate(candidateId) {
 
 export async function updateCandidate(candidateId, updates) {
   await updateDoc(doc(requireDb(), 'candidates', candidateId), withServerTimestamps(updates, { isUpdate: true }))
+}
+
+export async function getAllCandidates() {
+  const snapshot = await getDocs(collection(requireDb(), 'candidates'))
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .sort((left, right) => {
+      const leftMillis = typeof left.createdAt?.toMillis === 'function' ? left.createdAt.toMillis() : 0
+      const rightMillis = typeof right.createdAt?.toMillis === 'function' ? right.createdAt.toMillis() : 0
+      return rightMillis - leftMillis
+    })
 }
 
 // Submissions
