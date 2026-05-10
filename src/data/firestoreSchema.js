@@ -1,0 +1,110 @@
+export const programSchema = {
+  name: '',
+  slug: '',
+  category: '',
+  description: '',
+  highlights: [],
+  eligibility: [],
+  timeline: [],
+  accessUrl: '',
+  intake: '',
+  seats: 0,
+  active: true,
+  version: 1,
+  createdAt: null,
+  updatedAt: null,
+}
+
+export const questionSchema = {
+  programId: '',
+  prompt: '',
+  modelAnswer: '',
+  rubricMarks: '',
+  maxScore: 10,
+  order: 1,
+  active: true,
+  version: 1,
+  createdAt: null,
+  updatedAt: null,
+}
+
+export const ruleSchema = {
+  programId: '',
+  active: true,
+  version: 1,
+  shortlistCutoff: 0,
+  waitlistCutoff: 0,
+  borderlineRange: {
+    min: 0,
+    max: 0,
+  },
+  minimumScorePerQuestion: 0,
+  aiStrictnessLevel: 'Balanced',
+  requiredKeywords: [],
+  negativeFlags: [],
+  questionWeightage: {},
+  autoShortlist: false,
+  manualReview: true,
+  autoEmail: false,
+  aiRubricTemplate: {},
+  createdAt: null,
+  updatedAt: null,
+  deactivatedAt: null,
+}
+
+export const candidateSchema = {
+  fullName: '',
+  email: '',
+  phone: '',
+  city: '',
+  qualification: '',
+  experience: '',
+  programId: '',
+  status: 'pending_registration',
+  createdAt: null,
+  updatedAt: null,
+}
+
+export const submissionSchema = {
+  programId: '',
+  candidateId: '',
+  answers: [],
+  aiScores: [],
+  totalScore: 0,
+  status: 'pending_ai_score',
+  borderline: false,
+  criteriaVersion: 1,
+  questionVersion: 1,
+  ruleUsedSnapshot: {},
+  aiRubricUsedSnapshot: {},
+  submittedAt: null,
+  scoredAt: null,
+  createdAt: null,
+  updatedAt: null,
+}
+
+export const accessGrantSchema = {
+  candidateId: '',
+  programId: '',
+  submissionId: '',
+  grantedBy: '',
+  accessUrl: '',
+  accessToken: '',
+  status: 'pending',
+  grantedAt: null,
+  expiresAt: null,
+  createdAt: null,
+  updatedAt: null,
+}
+
+export const adminSchema = {
+  uid: '',
+  fullName: '',
+  email: '',
+  role: 'reviewer',
+  permissions: [],
+  active: true,
+  createdAt: null,
+  updatedAt: null,
+  lastLoginAt: null,
+}
