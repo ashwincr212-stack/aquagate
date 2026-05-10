@@ -190,33 +190,58 @@ export async function deactivateQuestion(programId, questionId) {
 }
 
 // Rules
-export async function getActiveRules(programId) {
-  const snapshot = await getDocs(
-    query(
-      collection(requireDb(), 'selectionRules'),
-      where('programId', '==', programId),
-      where('active', '==', true),
-      orderBy('version', 'desc'),
-    ),
-  )
+export async function getRules(programRef) {
+  const database = requireDb()
+  let snapshot
 
-  if (snapshot.empty) {
-    return null
+  if (typeof programRef === 'object' && programRef !== null) {
+    if (programRef.programSlug) {
+      snapshot = await getDocs(query(collection(database, 'selectionRules'), where('programSlug', '==', programRef.programSlug)))
+    } else if (programRef.programId) {
+      snapshot = await getDocs(query(collection(database, 'selectionRules'), where('programId', '==', programRef.programId)))
+    }
+  } else if (typeof programRef === 'string') {
+    snapshot = await getDocs(query(collection(database, 'selectionRules'), where('programId', '==', programRef)))
   }
 
-  const rule = snapshot.docs[0]
-  return { id: rule.id, ...rule.data() }
+  if (!snapshot) {
+    return []
+  }
+
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .sort((left, right) => {
+      const leftVersion = Number(left.criteriaVersion ?? left.version ?? 0)
+      const rightVersion = Number(right.criteriaVersion ?? right.version ?? 0)
+      return rightVersion - leftVersion
+    })
+}
+
+export async function getActiveRules(programRef) {
+  const rules = await getRules(programRef)
+  return rules.find((rule) => rule.isActive === true || rule.active === true) ?? null
 }
 
 export async function createRulesVersion(programId, rulesData) {
-  const activeRule = await getActiveRules(programId)
-  const nextVersion = (activeRule?.version ?? 0) + 1
+  const existingRules = await getRules({
+    programId,
+    programSlug: rulesData.programSlug,
+  })
+  const nextVersion =
+    existingRules.reduce(
+      (maxVersion, rule) => Math.max(maxVersion, Number(rule.criteriaVersion ?? rule.version ?? 0)),
+      0,
+    ) + 1
+
   const docRef = await addDoc(
     collection(requireDb(), 'selectionRules'),
     withServerTimestamps({
       programId,
+      programSlug: rulesData.programSlug ?? '',
       active: true,
+      isActive: true,
       version: nextVersion,
+      criteriaVersion: nextVersion,
       ...rulesData,
     }),
   )
@@ -224,19 +249,20 @@ export async function createRulesVersion(programId, rulesData) {
   return docRef.id
 }
 
-export async function deactivateOldRules(programId) {
-  const snapshot = await getDocs(
-    query(collection(requireDb(), 'selectionRules'), where('programId', '==', programId), where('active', '==', true)),
-  )
+export async function deactivateOldRules(programRef) {
+  const rules = await getRules(programRef)
   const batch = writeBatch(requireDb())
 
-  snapshot.forEach((item) => {
-    batch.update(item.ref, {
-      active: false,
-      deactivatedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+  rules
+    .filter((rule) => rule.isActive === true || rule.active === true)
+    .forEach((rule) => {
+      batch.update(doc(requireDb(), 'selectionRules', rule.id), {
+        active: false,
+        isActive: false,
+        deactivatedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
     })
-  })
 
   await batch.commit()
 }
