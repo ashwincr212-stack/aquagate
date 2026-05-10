@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import ProgramCard from '../components/ProgramCard.jsx'
 import { landingSteps, programs } from '../data/mockData.js'
 
+const DEMO_PROGRAM_SLUG = 'demo-course'
+
 function Landing() {
   return (
     <div className="stack-xl">
@@ -15,7 +17,7 @@ function Landing() {
             only for shortlisted candidates.
           </p>
           <div className="button-row">
-            <Link to={`/enroll/${programs[0].slug}`} className="button">
+            <Link to={`/enroll/${DEMO_PROGRAM_SLUG}`} className="button">
               View Demo Program
             </Link>
             <Link to="/admin/dashboard" className="button button--ghost">

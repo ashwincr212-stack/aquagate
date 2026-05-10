@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getProgramBySlug } from '../data/mockData.js'
+import { useProgram } from '../hooks/useProgram.js'
 
 const initialForm = {
   fullName: '',
@@ -14,7 +14,7 @@ const initialForm = {
 function Register() {
   const { programSlug } = useParams()
   const navigate = useNavigate()
-  const program = useMemo(() => getProgramBySlug(programSlug), [programSlug])
+  const { loading, program, error, fallbackMessage } = useProgram(programSlug)
   const [form, setForm] = useState(initialForm)
   const [submitted, setSubmitted] = useState(false)
 
@@ -26,8 +26,32 @@ function Register() {
     event.preventDefault()
     setSubmitted(true)
     window.setTimeout(() => {
-      navigate(`/assessment/${program.slug}`)
+      navigate(`/assessment/${programSlug}`)
     }, 900)
+  }
+
+  if (loading) {
+    return (
+      <section className="form-layout">
+        <article className="panel panel--glow">
+          <p className="eyebrow">Registration</p>
+          <h1>Loading program...</h1>
+          <p className="hero-copy">Fetching the latest enrollment details from AquaGate.</p>
+        </article>
+      </section>
+    )
+  }
+
+  if (error || !program) {
+    return (
+      <section className="form-layout">
+        <article className="panel panel--glow">
+          <p className="eyebrow">Registration</p>
+          <h1>Program unavailable</h1>
+          <p className="hero-copy">{error || 'We could not find this enrollment program.'}</p>
+        </article>
+      </section>
+    )
   }
 
   return (
@@ -39,13 +63,14 @@ function Register() {
           This step uses mock submit behavior only. In later phases, the same shape can connect cleanly to Firestore,
           OTP, and AI evaluation workflows.
         </p>
+        {fallbackMessage ? <p className="muted">{fallbackMessage}</p> : null}
       </article>
 
       <form className="panel form-card" onSubmit={handleSubmit}>
         <div className="section-heading">
           <div>
             <p className="eyebrow">Candidate details</p>
-            <h2>{program.name}</h2>
+            <h2>{program.title}</h2>
           </div>
           <span className="status-pill">Mock submit flow</span>
         </div>
@@ -77,7 +102,7 @@ function Register() {
           </label>
           <label className="field field--full">
             <span>Program applying for</span>
-            <input value={program.name} readOnly />
+            <input value={program.title} readOnly />
           </label>
         </div>
 

@@ -1,25 +1,44 @@
 import { Link, useParams } from 'react-router-dom'
-import { getProgramBySlug } from '../data/mockData.js'
+import { useProgram } from '../hooks/useProgram.js'
 
 function Enroll() {
   const { programSlug } = useParams()
-  const program = getProgramBySlug(programSlug)
+  const { loading, program, error, fallbackMessage } = useProgram(programSlug)
+
+  if (loading) {
+    return (
+      <section className="panel panel--glow">
+        <p className="eyebrow">Enrollment</p>
+        <h1>Loading program...</h1>
+        <p className="hero-copy">Fetching the latest enrollment details from AquaGate.</p>
+      </section>
+    )
+  }
+
+  if (error || !program) {
+    return (
+      <section className="panel panel--glow">
+        <p className="eyebrow">Enrollment</p>
+        <h1>Program unavailable</h1>
+        <p className="hero-copy">{error || 'We could not find this enrollment program.'}</p>
+      </section>
+    )
+  }
 
   return (
     <div className="stack-lg">
       <section className="hero-subpage panel panel--glow">
         <p className="eyebrow">{program.category}</p>
-        <h1>{program.name}</h1>
-        <p className="hero-copy">
-          A premium screening gateway designed to assess fit before access is granted. This intake is mocked for Step
-          1, but structured for future Firestore-backed program routing.
-        </p>
+        <h1>{program.title}</h1>
+        <p className="hero-copy">{program.description}</p>
         <div className="button-row">
           <Link to={`/register/${program.slug}`} className="button">
             Apply Now
           </Link>
-          <span className="status-pill">{program.active ? 'Applications open' : 'Applications paused'}</span>
+          <span className="status-pill">{program.isActive ? 'Applications open' : 'Applications paused'}</span>
         </div>
+        {fallbackMessage ? <p className="muted">{fallbackMessage}</p> : null}
+        {!program.isActive ? <p className="error-copy">This enrollment is currently closed.</p> : null}
       </section>
 
       <section className="two-column">
@@ -58,6 +77,10 @@ function Enroll() {
         <article className="panel">
           <h2>Selection notes</h2>
           <div className="info-card">
+            <p>Program slug</p>
+            <strong>{program.slug}</strong>
+          </div>
+          <div className="info-card">
             <p>Applications open until</p>
             <strong>{program.applicationsOpenUntil}</strong>
           </div>
@@ -67,7 +90,7 @@ function Enroll() {
           </div>
           <div className="info-card">
             <p>Downstream access URL</p>
-            <strong>{program.accessUrl}</strong>
+            <strong>{program.courseAccessUrl || 'Configured in Firestore'}</strong>
           </div>
         </article>
       </section>

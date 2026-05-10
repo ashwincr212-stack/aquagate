@@ -1,18 +1,43 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getProgramBySlug, mockQuestions } from '../data/mockData.js'
+import { useProgram } from '../hooks/useProgram.js'
+import { useProgramQuestions } from '../hooks/useProgramQuestions.js'
 
 function Assessment() {
   const { programSlug } = useParams()
   const navigate = useNavigate()
-  const program = useMemo(() => getProgramBySlug(programSlug), [programSlug])
-  const [answers, setAnswers] = useState(() =>
-    Object.fromEntries(mockQuestions.map((question) => [question.id, ''])),
-  )
+  const { loading: programLoading, program, error: programError, fallbackMessage: programFallbackMessage } = useProgram(programSlug)
+  const {
+    loading: questionsLoading,
+    questions,
+    error: questionsError,
+    fallbackMessage: questionsFallbackMessage,
+  } = useProgramQuestions(programSlug)
+  const [answers, setAnswers] = useState({})
   const [draftSaved, setDraftSaved] = useState(false)
 
+  useEffect(() => {
+    if (!questions.length) {
+      setAnswers({})
+      return
+    }
+
+    setAnswers((current) => {
+      const next = {}
+
+      questions.forEach((question) => {
+        next[question.id] = current[question.id] ?? ''
+      })
+
+      return next
+    })
+  }, [questions])
+
   const answeredCount = Object.values(answers).filter((value) => value.trim()).length
-  const progress = Math.round((answeredCount / mockQuestions.length) * 100)
+  const progress = Math.round((answeredCount / (questions.length || 1)) * 100)
+  const loading = programLoading || questionsLoading
+  const error = programError || questionsError
+  const fallbackMessage = [programFallbackMessage, questionsFallbackMessage].filter(Boolean).join(' ')
 
   const handleAnswerChange = (questionId, value) => {
     setAnswers((current) => ({ ...current, [questionId]: value }))
@@ -25,8 +50,27 @@ function Assessment() {
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    const status = answeredCount >= 8 ? 'shortlisted' : answeredCount >= 5 ? 'review' : 'waitlisted'
-    navigate(`/result/sub-2048?status=${status}&program=${program.slug}`)
+    navigate('/result/mock-submission')
+  }
+
+  if (loading) {
+    return (
+      <section className="panel panel--glow">
+        <p className="eyebrow">Assessment</p>
+        <h1>Loading assessment...</h1>
+        <p className="hero-copy">Fetching the latest program details and question set from AquaGate.</p>
+      </section>
+    )
+  }
+
+  if (error || !program || questions.length === 0) {
+    return (
+      <section className="panel panel--glow">
+        <p className="eyebrow">Assessment</p>
+        <h1>Assessment unavailable</h1>
+        <p className="hero-copy">{error || 'This assessment is not ready yet for the selected program.'}</p>
+      </section>
+    )
   }
 
   return (
@@ -35,7 +79,7 @@ function Assessment() {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Assessment</p>
-            <h1>{program.name}</h1>
+            <h1>{program.title}</h1>
           </div>
           <span className="status-pill">{progress}% complete</span>
         </div>
@@ -43,23 +87,26 @@ function Assessment() {
         <div className="progress-bar" aria-hidden="true">
           <span style={{ width: `${progress}%` }} />
         </div>
-        <p className="muted">10 mock questions, local state only, designed for future admin-controlled question delivery.</p>
+        <p className="muted">
+          {questions.length} Firestore-backed questions loaded. Answers stay in local state only for this step.
+        </p>
+        {fallbackMessage ? <p className="muted">{fallbackMessage}</p> : null}
       </section>
 
       <div className="stack-md">
-        {mockQuestions.map((question) => (
+        {questions.map((question) => (
           <article key={question.id} className="panel question-answer-card">
             <div className="section-heading">
               <div>
                 <p className="eyebrow">Question {question.order}</p>
-                <h3>{question.prompt}</h3>
+                <h3>{question.questionText}</h3>
               </div>
               <span className="status-pill status-pill--soft">{question.maxScore} marks</span>
             </div>
             <textarea
               rows="5"
               placeholder="Write your answer here..."
-              value={answers[question.id]}
+              value={answers[question.id] ?? ''}
               onChange={(event) => handleAnswerChange(question.id, event.target.value)}
             />
           </article>

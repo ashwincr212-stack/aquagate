@@ -65,6 +65,24 @@ export async function getProgramBySlug(programSlug) {
   return { id: program.id, ...program.data() }
 }
 
+export async function getProgramForPublic(programSlug) {
+  const database = requireDb()
+
+  if (programSlug === 'demo-course') {
+    const snapshot = await getDoc(doc(database, 'programs', programSlug))
+    return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null
+  }
+
+  const snapshot = await getDocs(query(collection(database, 'programs'), where('slug', '==', programSlug)))
+
+  if (snapshot.empty) {
+    return null
+  }
+
+  const program = snapshot.docs[0]
+  return { id: program.id, ...program.data() }
+}
+
 export async function createProgram(programData) {
   const docRef = await addDoc(
     collection(requireDb(), 'programs'),
@@ -94,6 +112,15 @@ export async function getQuestions(programId) {
   )
 
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+}
+
+export async function getQuestionsForProgramSlug(programSlug) {
+  const snapshot = await getDocs(query(collection(requireDb(), 'questions'), where('programSlug', '==', programSlug)))
+
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .filter((question) => question.isActive !== false && question.active !== false)
+    .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
 }
 
 export async function createQuestion(programId, questionData) {
