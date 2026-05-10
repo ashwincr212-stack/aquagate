@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+functions/.env
+functions/.env.local
+functions/.env.*.local

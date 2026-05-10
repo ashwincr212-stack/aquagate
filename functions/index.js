@@ -9,6 +9,7 @@ const {
   getActiveRules,
   updateSubmissionScore,
 } = require('./services/firestoreAccess')
+const { getGeminiProviderStatus } = require('./services/geminiProvider')
 const { buildScoringPayload } = require('./services/promptBuilder')
 const { mockScoreSubmission } = require('./services/scoringService')
 const { calculateTotalScore, evaluateRules } = require('./services/rulesEngine')
@@ -73,5 +74,19 @@ exports.scoreSubmission = onCall(async (request) => {
     }
   } catch (error) {
     throw new HttpsError('internal', error.message || 'Unable to score submission.')
+  }
+})
+
+exports.getAiProviderStatus = onCall(async () => {
+  const providerStatus = getGeminiProviderStatus()
+
+  return {
+    provider: providerStatus.provider,
+    configured: providerStatus.configured,
+    model: providerStatus.model,
+    realCallsEnabled: false,
+    message: providerStatus.configured
+      ? 'Gemini backend configuration placeholder is present. Real Gemini calls remain disabled.'
+      : 'Gemini backend configuration is not set yet. Add the key later in functions/.env or Firebase secrets.',
   }
 })

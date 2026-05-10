@@ -1,3 +1,5 @@
+const { getGeminiConfig } = require('../config/geminiConfig')
+
 function buildExpectedResponseShape() {
   return {
     aiScores: [
@@ -116,6 +118,17 @@ function validateGeminiScoreResponse(parsedResponse, scoringPayload = {}) {
   return parsedResponse
 }
 
+function getGeminiProviderStatus() {
+  const { hasApiKey, model, provider } = getGeminiConfig()
+
+  return {
+    provider,
+    configured: hasApiKey,
+    model,
+    realCallsEnabled: false,
+  }
+}
+
 /*
  Future real function outline only:
 
@@ -132,6 +145,7 @@ function validateGeminiScoreResponse(parsedResponse, scoringPayload = {}) {
 
 module.exports = {
   buildGeminiPrompt,
+  getGeminiProviderStatus,
   parseGeminiJsonResponse,
   validateGeminiScoreResponse,
 }

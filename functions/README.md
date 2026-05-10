@@ -49,6 +49,19 @@ Gemini placeholders can be prepared locally, but no real Gemini call should happ
 - Retry and queue infrastructure
 - Production deployment configuration
 
+## Local Backend-Only Key Setup Later
+
+When Gemini is ready to be configured locally:
+- Copy `functions/.env.example` to `functions/.env`
+- Add `GEMINI_API_KEY` only inside `functions/.env`
+- Never add the Gemini key to root `.env`
+- Never prefix the Gemini key with `VITE_`
+- Never place the Gemini key anywhere inside `src/`
+- For production, move the secret to Firebase secrets before deployment
+
+This step only checks configuration readiness.
+Real Gemini calls remain disabled.
+
 ## Next Safe Step
 
 Use the Firebase Emulator to test backend reads, writes, and mock scoring logic before any real provider integration.
