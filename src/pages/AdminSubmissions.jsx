@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import CandidateTable from '../components/CandidateTable.jsx'
 import { applyMockAiScore, prepareSubmissionForScoring } from '../services/aiScoringService.js'
+import { scoreSubmissionWithBackendMock } from '../services/functionsService.js'
 import { getActiveRules, getAllSubmissions, getCandidate, getQuestions, updateSubmission } from '../services/firestoreService.js'
 import { getCandidateStatusLabel } from '../utils/statusUtils.js'
 
@@ -63,7 +64,7 @@ function AdminSubmissions() {
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [actionState, setActionState] = useState({ saving: false, error: '' })
+  const [actionState, setActionState] = useState({ saving: false, error: '', message: '' })
   const isDevMode = import.meta.env.DEV === true
 
   useEffect(() => {
@@ -104,6 +105,21 @@ function AdminSubmissions() {
     }
   }, [])
 
+  const reloadSubmissions = async (selectedSubmissionId = selectedCandidate?.id) => {
+    const submissionRows = await getAllSubmissions()
+    const mergedRows = await Promise.all(
+      submissionRows.map(async (submission) => {
+        const candidate = submission.candidateId ? await getCandidate(submission.candidateId) : null
+        return normalizeSubmissionForAdmin(submission, candidate)
+      }),
+    )
+
+    setSubmissions(mergedRows)
+    setSelectedCandidate(
+      mergedRows.find((submission) => submission.id === selectedSubmissionId) ?? mergedRows[0] ?? null,
+    )
+  }
+
   const filteredSubmissions = useMemo(() => {
     if (activeFilter === 'all') {
       return submissions
@@ -133,7 +149,7 @@ function AdminSubmissions() {
     }
 
     try {
-      setActionState({ saving: true, error: '' })
+      setActionState({ saving: true, error: '', message: '' })
       await updateSubmission(selectedCandidate.id, {
         adminDecision,
         adminDecisionAt: new Date().toISOString(),
@@ -166,11 +182,11 @@ function AdminSubmissions() {
           : current,
       )
     } catch (saveError) {
-      setActionState({ saving: false, error: `Unable to update submission. ${saveError.message}` })
+      setActionState({ saving: false, error: `Unable to update submission. ${saveError.message}`, message: '' })
       return
     }
 
-    setActionState({ saving: false, error: '' })
+    setActionState({ saving: false, error: '', message: '' })
   }
 
   const handleMockAiScore = async () => {
@@ -179,7 +195,7 @@ function AdminSubmissions() {
     }
 
     try {
-      setActionState({ saving: true, error: '' })
+      setActionState({ saving: true, error: '', message: '' })
 
       // This stays dev-only on the frontend. Real AI scoring must move to
       // Firebase Cloud Functions or another backend so API keys never ship in Vite.
@@ -247,11 +263,33 @@ function AdminSubmissions() {
           : current,
       )
     } catch (saveError) {
-      setActionState({ saving: false, error: `Unable to apply mock AI score. ${saveError.message}` })
+      setActionState({ saving: false, error: `Unable to apply mock AI score. ${saveError.message}`, message: '' })
       return
     }
 
-    setActionState({ saving: false, error: '' })
+    setActionState({ saving: false, error: '', message: 'Frontend mock score applied successfully.' })
+  }
+
+  const handleBackendMockScore = async () => {
+    if (!selectedCandidate) {
+      return
+    }
+
+    try {
+      // Frontend Mock AI Score is the local dev fallback.
+      // Backend Mock Score is the future production pathway.
+      // Real Gemini will replace the backend mock later.
+      setActionState({ saving: true, error: '', message: '' })
+      const response = await scoreSubmissionWithBackendMock(selectedCandidate.id)
+      await reloadSubmissions(selectedCandidate.id)
+      setActionState({
+        saving: false,
+        error: '',
+        message: response?.message || 'Backend mock score completed successfully.',
+      })
+    } catch (saveError) {
+      setActionState({ saving: false, error: saveError.message, message: '' })
+    }
   }
 
   if (loading) {
@@ -359,6 +397,7 @@ function AdminSubmissions() {
             </div>
 
             {actionState.error ? <p className="error-copy">{actionState.error}</p> : null}
+            {actionState.message ? <p className="success-copy">{actionState.message}</p> : null}
 
             <div className="button-row button-row--stack">
               <button
@@ -370,9 +409,14 @@ function AdminSubmissions() {
                 View Result Page
               </button>
               {isDevMode ? (
-                <button type="button" className="button" disabled={actionState.saving} onClick={handleMockAiScore}>
-                  Mock AI Score
-                </button>
+                <>
+                  <button type="button" className="button" disabled={actionState.saving} onClick={handleBackendMockScore}>
+                    Backend Mock Score
+                  </button>
+                  <button type="button" className="button button--ghost" disabled={actionState.saving} onClick={handleMockAiScore}>
+                    Mock AI Score
+                  </button>
+                </>
               ) : null}
               <button
                 type="button"
