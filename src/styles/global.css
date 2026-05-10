@@ -684,6 +684,17 @@ textarea {
   color: var(--heading);
 }
 
+.program-record-button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+}
+
+.program-record-button--active {
+  border-color: rgba(15, 79, 207, 0.28);
+  box-shadow: 0 0 0 3px rgba(15, 79, 207, 0.08);
+}
+
 .auth-shell {
   min-height: 100vh;
   display: grid;
