@@ -1,5 +1,14 @@
 function CandidateTable({ submissions, activeFilter, onFilterChange, onSelectCandidate, selectedCandidateId }) {
-  const filters = ['All', 'Shortlisted', 'Waitlisted', 'Rejected', 'Borderline', 'Pending AI review']
+  const filters = [
+    { value: 'all', label: 'All' },
+    { value: 'pending_ai_score', label: 'Pending AI score' },
+    { value: 'shortlisted', label: 'Shortlisted' },
+    { value: 'waitlisted', label: 'Waitlisted' },
+    { value: 'rejected', label: 'Rejected' },
+    { value: 'borderline_review', label: 'Borderline Review' },
+    { value: 'admin_approved', label: 'Admin Approved' },
+    { value: 'admin_rejected', label: 'Admin Rejected' },
+  ]
 
   return (
     <section className="panel">
@@ -11,12 +20,12 @@ function CandidateTable({ submissions, activeFilter, onFilterChange, onSelectCan
         <div className="filter-row">
           {filters.map((filter) => (
             <button
-              key={filter}
+              key={filter.value}
               type="button"
-              className={`chip ${activeFilter === filter ? 'chip--active' : ''}`}
-              onClick={() => onFilterChange(filter)}
+              className={`chip ${activeFilter === filter.value ? 'chip--active' : ''}`}
+              onClick={() => onFilterChange(filter.value)}
             >
-              {filter}
+              {filter.label}
             </button>
           ))}
         </div>
@@ -30,11 +39,10 @@ function CandidateTable({ submissions, activeFilter, onFilterChange, onSelectCan
               <th>Email</th>
               <th>Phone</th>
               <th>Program</th>
-              <th>Score</th>
               <th>Status</th>
+              <th>Score</th>
               <th>Borderline</th>
-              <th>Submitted date</th>
-              <th>Email sent</th>
+              <th>Submitted At</th>
               <th>Admin decision</th>
             </tr>
           </thead>
@@ -48,12 +56,11 @@ function CandidateTable({ submissions, activeFilter, onFilterChange, onSelectCan
                 <td>{submission.name}</td>
                 <td>{submission.email}</td>
                 <td>{submission.phone}</td>
-                <td>{submission.program}</td>
-                <td>{submission.score}</td>
+                <td>{submission.programTitle}</td>
                 <td>{submission.status}</td>
+                <td>{submission.scoreLabel}</td>
                 <td>{submission.borderline ? 'Yes' : 'No'}</td>
-                <td>{submission.submittedDate}</td>
-                <td>{submission.emailSent ? 'Sent' : 'Pending'}</td>
+                <td>{submission.submittedAtLabel}</td>
                 <td>{submission.adminDecision}</td>
               </tr>
             ))}

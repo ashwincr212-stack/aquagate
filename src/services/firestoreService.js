@@ -264,14 +264,24 @@ export async function updateSubmission(submissionId, updates) {
 }
 
 export async function getSubmissionsByProgram(programId) {
-  const snapshot = await getDocs(
-    query(collection(requireDb(), 'submissions'), where('programId', '==', programId), orderBy('submittedAt', 'desc')),
-  )
+  const snapshot = await getDocs(query(collection(requireDb(), 'submissions'), where('programId', '==', programId)))
 
-  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .sort((left, right) => {
+      const leftMillis = typeof left.submittedAt?.toMillis === 'function' ? left.submittedAt.toMillis() : 0
+      const rightMillis = typeof right.submittedAt?.toMillis === 'function' ? right.submittedAt.toMillis() : 0
+      return rightMillis - leftMillis
+    })
 }
 
 export async function getAllSubmissions() {
-  const snapshot = await getDocs(query(collection(requireDb(), 'submissions'), orderBy('submittedAt', 'desc')))
-  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+  const snapshot = await getDocs(collection(requireDb(), 'submissions'))
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .sort((left, right) => {
+      const leftMillis = typeof left.submittedAt?.toMillis === 'function' ? left.submittedAt.toMillis() : 0
+      const rightMillis = typeof right.submittedAt?.toMillis === 'function' ? right.submittedAt.toMillis() : 0
+      return rightMillis - leftMillis
+    })
 }
