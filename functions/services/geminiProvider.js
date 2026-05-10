@@ -1,4 +1,5 @@
-const { getGeminiConfig } = require('../config/geminiConfig')
+const { GoogleGenAI } = require('@google/genai')
+const { getGeminiApiKey, getGeminiConfig } = require('../config/geminiConfig')
 
 function buildExpectedResponseShape() {
   return {
@@ -19,34 +20,36 @@ function buildExpectedResponseShape() {
 
 function buildGeminiPrompt(scoringPayload = {}) {
   const expectedShape = buildExpectedResponseShape()
+  const programTitle = scoringPayload.program?.title ?? 'Untitled Program'
+  const programSlug = scoringPayload.program?.slug ?? ''
+  const strictness = scoringPayload.rulesSnapshot?.aiStrictnessLevel ?? 'balanced'
+  const questions = Array.isArray(scoringPayload.questionsWithRubrics) ? scoringPayload.questionsWithRubrics : []
+  const answers = Array.isArray(scoringPayload.answers) ? scoringPayload.answers : []
 
-  return {
-    systemInstruction:
-      'You are an admissions scoring assistant. Score each answer strictly against the supplied rubric and return JSON only.',
-    developerNotes: [
-      'Future real implementation will send this prompt to Gemini from the backend only.',
-      'Do not place Gemini API keys in frontend code, .env files used by Vite, or browser-exposed configuration.',
-      'This file does not call Gemini yet and contains placeholders only.',
-    ],
-    rubricContext: {
-      candidateSummary: scoringPayload.candidateSummary ?? {},
-      program: scoringPayload.program ?? {},
-      rulesSnapshot: scoringPayload.rulesSnapshot ?? {},
-      questionsWithRubrics: Array.isArray(scoringPayload.questionsWithRubrics)
-        ? scoringPayload.questionsWithRubrics
-        : [],
-      answers: Array.isArray(scoringPayload.answers) ? scoringPayload.answers : [],
-    },
-    outputRequirements: {
-      format: 'json',
-      expectedShape,
-      instructions: [
-        'Return valid JSON only.',
-        'Include one aiScores item for every answer.',
-        'Keep scores within the allowed maxScore for each question.',
-      ],
-    },
-  }
+  return [
+    'You are an admissions scoring assistant for AquaGate.',
+    'Score each answer using the question maxScore, rubric, and any model answer guidance.',
+    'Do not exceed maxScore for any question.',
+    'Give useful and concise feedback for each answer.',
+    'Return valid JSON only.',
+    'Do not return markdown.',
+    'Do not wrap the JSON in code fences.',
+    'Do not include any extra text before or after the JSON.',
+    '',
+    `Program: ${programTitle} (${programSlug})`,
+    `AI strictness: ${strictness}`,
+    `Candidate summary: ${JSON.stringify(scoringPayload.candidateSummary ?? {})}`,
+    `Rules snapshot: ${JSON.stringify(scoringPayload.rulesSnapshot ?? {})}`,
+    '',
+    'Questions with rubrics:',
+    JSON.stringify(questions, null, 2),
+    '',
+    'Candidate answers:',
+    JSON.stringify(answers, null, 2),
+    '',
+    'Return JSON with exactly this shape:',
+    JSON.stringify(expectedShape, null, 2),
+  ].join('\n')
 }
 
 function parseGeminiJsonResponse(rawText) {
@@ -55,7 +58,14 @@ function parseGeminiJsonResponse(rawText) {
   }
 
   try {
-    return JSON.parse(rawText)
+    const cleanedText = rawText
+      .trim()
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim()
+
+    return JSON.parse(cleanedText)
   } catch (error) {
     throw new Error(`Gemini response is not valid JSON. ${error.message}`)
   }
@@ -125,19 +135,43 @@ function getGeminiProviderStatus() {
     provider,
     configured: hasApiKey,
     model,
-    realCallsEnabled: false,
+    realCallsEnabled: hasApiKey,
+    mode: hasApiKey ? 'Gemini backend available locally' : 'Backend mock only',
   }
+}
+
+async function scoreWithGemini(scoringPayload = {}) {
+  const apiKey = getGeminiApiKey()
+  const { model } = getGeminiConfig()
+
+  if (!apiKey) {
+    throw new Error('Gemini API key is not configured in functions/.env')
+  }
+
+  const prompt = buildGeminiPrompt(scoringPayload)
+  const client = new GoogleGenAI({ apiKey })
+  const response = await client.models.generateContent({
+    model,
+    contents: prompt,
+    config: {
+      responseMimeType: 'application/json',
+      temperature: 0.2,
+    },
+  })
+  const rawText =
+    typeof response.text === 'string' && response.text.trim().length > 0
+      ? response.text
+      : response.candidates?.[0]?.content?.parts?.map((part) => part.text ?? '').join('') ?? ''
+  const parsedResponse = parseGeminiJsonResponse(rawText)
+  return validateGeminiScoreResponse(parsedResponse, scoringPayload)
 }
 
 /*
  Future real function outline only:
 
  async function scoreWithGemini(scoringPayload) {
-   // 1. Build prompt with buildGeminiPrompt(scoringPayload)
-   // 2. Send prompt to Gemini from the backend only
-   // 3. Parse raw text with parseGeminiJsonResponse(rawText)
-   // 4. Validate with validateGeminiScoreResponse(parsed, scoringPayload)
-   // 5. Return the validated score payload
+   // Implemented for local emulator testing only.
+   // Keep all secrets on the backend and never expose them to the frontend.
  }
 
  This must not be implemented until backend-only secrets are configured.
@@ -147,5 +181,6 @@ module.exports = {
   buildGeminiPrompt,
   getGeminiProviderStatus,
   parseGeminiJsonResponse,
+  scoreWithGemini,
   validateGeminiScoreResponse,
 }

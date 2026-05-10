@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import CandidateTable from '../components/CandidateTable.jsx'
 import { applyMockAiScore, prepareSubmissionForScoring } from '../services/aiScoringService.js'
-import { scoreSubmissionWithBackendMock } from '../services/functionsService.js'
+import { scoreSubmissionWithBackendMock, scoreSubmissionWithGemini } from '../services/functionsService.js'
 import { getActiveRules, getAllSubmissions, getCandidate, getQuestions, updateSubmission } from '../services/firestoreService.js'
 import { getCandidateStatusLabel } from '../utils/statusUtils.js'
 
@@ -292,6 +292,25 @@ function AdminSubmissions() {
     }
   }
 
+  const handleGeminiScore = async () => {
+    if (!selectedCandidate) {
+      return
+    }
+
+    try {
+      setActionState({ saving: true, error: '', message: '' })
+      const response = await scoreSubmissionWithGemini(selectedCandidate.id)
+      await reloadSubmissions(selectedCandidate.id)
+      setActionState({
+        saving: false,
+        error: '',
+        message: response?.message || 'Submission scored with Gemini from backend.',
+      })
+    } catch (saveError) {
+      setActionState({ saving: false, error: saveError.message, message: '' })
+    }
+  }
+
   if (loading) {
     return (
       <section className="panel panel--glow">
@@ -412,6 +431,9 @@ function AdminSubmissions() {
                 <>
                   <button type="button" className="button" disabled={actionState.saving} onClick={handleBackendMockScore}>
                     Backend Mock Score
+                  </button>
+                  <button type="button" className="button" disabled={actionState.saving} onClick={handleGeminiScore}>
+                    Gemini Score
                   </button>
                   <button type="button" className="button button--ghost" disabled={actionState.saving} onClick={handleMockAiScore}>
                     Mock AI Score

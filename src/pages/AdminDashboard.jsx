@@ -100,7 +100,7 @@ function AdminDashboard() {
             configured: Boolean(nextStatus?.configured),
             model: nextStatus?.model || 'gemini-1.5-flash',
             realCallsEnabled: Boolean(nextStatus?.realCallsEnabled),
-            mode: 'Backend mock only',
+            mode: nextStatus?.mode || 'Backend mock only',
             message: nextStatus?.configured
               ? nextStatus?.message || 'Gemini backend status is available.'
               : 'Gemini key is not configured yet. Backend mock scoring is still available.',
@@ -140,7 +140,7 @@ function AdminDashboard() {
         configured: Boolean(nextStatus?.configured),
         model: nextStatus?.model || 'gemini-1.5-flash',
         realCallsEnabled: Boolean(nextStatus?.realCallsEnabled),
-        mode: 'Backend mock only',
+        mode: nextStatus?.mode || 'Backend mock only',
         message: nextStatus?.configured
           ? nextStatus?.message || 'Gemini backend status is available.'
           : 'Gemini key is not configured yet. Backend mock scoring is still available.',

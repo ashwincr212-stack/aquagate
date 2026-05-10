@@ -43,8 +43,6 @@ Gemini placeholders can be prepared locally, but no real Gemini call should happ
 
 ## What Does Not Exist Yet
 
-- Real Gemini SDK
-- Real Gemini API call
 - Provider secrets
 - Retry and queue infrastructure
 - Production deployment configuration
@@ -60,7 +58,7 @@ When Gemini is ready to be configured locally:
 - For production, move the secret to Firebase secrets before deployment
 
 This step only checks configuration readiness.
-Real Gemini calls remain disabled.
+Real Gemini calls remain disabled until you add a backend-only key locally.
 
 ## Next Safe Step
 
@@ -90,3 +88,35 @@ Notes:
 - Blaze is needed later only when deploying Cloud Functions.
 - No Gemini key is needed yet because this backend path is still mock-only.
 - Local emulator testing can validate the backend flow before any deployment step.
+
+## Local-Only Gemini Test
+
+A) Create `functions/.env` manually:
+
+```bash
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-1.5-flash
+```
+
+B) Start the emulator:
+
+```bash
+npm run functions:serve
+```
+
+C) Start the app:
+
+```bash
+npm run dev
+```
+
+D) Test:
+- Go to `Admin Submissions`
+- Select a submission
+- Click `Gemini Score`
+
+Warnings:
+- Do not commit `functions/.env`
+- Do not put the Gemini key in the frontend
+- Do not deploy yet
+- Blaze is needed later only for production deployment

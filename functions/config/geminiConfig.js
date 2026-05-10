@@ -12,9 +12,14 @@ function getGeminiConfig() {
   }
 }
 
+function getGeminiApiKey() {
+  return typeof process.env.GEMINI_API_KEY === 'string' ? process.env.GEMINI_API_KEY.trim() : ''
+}
+
 // The actual real Gemini provider should read backend secrets internally later.
 // This helper intentionally does not expose the API key value or print it in logs.
 
 module.exports = {
+  getGeminiApiKey,
   getGeminiConfig,
 }

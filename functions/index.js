@@ -9,7 +9,7 @@ const {
   getActiveRules,
   updateSubmissionScore,
 } = require('./services/firestoreAccess')
-const { getGeminiProviderStatus } = require('./services/geminiProvider')
+const { getGeminiProviderStatus, scoreWithGemini } = require('./services/geminiProvider')
 const { buildScoringPayload } = require('./services/promptBuilder')
 const { mockScoreSubmission } = require('./services/scoringService')
 const { calculateTotalScore, evaluateRules } = require('./services/rulesEngine')
@@ -84,9 +84,71 @@ exports.getAiProviderStatus = onCall(async () => {
     provider: providerStatus.provider,
     configured: providerStatus.configured,
     model: providerStatus.model,
-    realCallsEnabled: false,
+    realCallsEnabled: providerStatus.realCallsEnabled,
+    mode: providerStatus.mode,
     message: providerStatus.configured
-      ? 'Gemini backend configuration placeholder is present. Real Gemini calls remain disabled.'
+      ? 'Gemini backend is configured for local emulator testing.'
       : 'Gemini backend configuration is not set yet. Add the key later in functions/.env or Firebase secrets.',
+  }
+})
+
+exports.scoreSubmissionWithGemini = onCall(async (request) => {
+  const submissionId = request.data?.submissionId
+
+  if (!submissionId || typeof submissionId !== 'string') {
+    throw new HttpsError('invalid-argument', 'A valid submissionId is required.')
+  }
+
+  try {
+    const submission = await getSubmission(submissionId)
+    const candidate = submission.candidateId ? await getCandidate(submission.candidateId) : null
+    const program = await getProgram(submission.programId || submission.programSlug)
+    const programSlug = submission.programSlug || program.slug
+
+    if (!programSlug) {
+      throw new Error('Program slug is missing on the submission and program record.')
+    }
+
+    const questions = await getQuestionsByProgramSlug(programSlug)
+    const rules = await getActiveRules(programSlug)
+    const scoringPayload = buildScoringPayload({
+      submission,
+      candidate,
+      program,
+      questions,
+      rules,
+    })
+    const geminiScore = await scoreWithGemini(scoringPayload)
+    const totalScore = calculateTotalScore(geminiScore.aiScores)
+    const evaluation = evaluateRules(totalScore, geminiScore.aiScores, rules)
+
+    await updateSubmissionScore(submissionId, {
+      status: evaluation.decision,
+      borderline: evaluation.borderline,
+      totalScore,
+      aiScores: geminiScore.aiScores,
+      aiSummary: geminiScore.aiSummary,
+      aiRecommendation: geminiScore.aiRecommendation,
+      ruleUsedSnapshot: scoringPayload.rulesSnapshot,
+      aiRubricUsedSnapshot: {
+        source: 'gemini_real_local',
+        futureProvider: 'gemini',
+        generatedFromQuestions: scoringPayload.questionsWithRubrics,
+      },
+      backendScoringSource: 'gemini_real_local',
+      futureProvider: 'gemini',
+      realAiUsed: true,
+      scoringReason: evaluation.reason,
+    })
+
+    return {
+      success: true,
+      submissionId,
+      status: evaluation.decision,
+      totalScore,
+      message: 'Submission scored with Gemini from backend.',
+    }
+  } catch (error) {
+    throw new HttpsError('internal', error.message || 'Unable to score submission with Gemini.')
   }
 })
