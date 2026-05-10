@@ -1,9 +1,32 @@
 import { useState } from 'react'
 import ProgramCard from '../components/ProgramCard.jsx'
+import { demoProgram } from '../data/demoSeedData.js'
 import { programs as seedPrograms } from '../data/mockData.js'
+import { seedDemoProgram } from '../services/seedService.js'
+
+function createDemoCard() {
+  return {
+    id: 'prog-demo-seeded',
+    name: demoProgram.title,
+    slug: demoProgram.slug,
+    category: 'Course',
+    active: demoProgram.isActive,
+    mode: 'Online',
+    duration: 'Flexible',
+    intake: 'Demo',
+    applicationsOpenUntil: 'Development only',
+    eligibility: ['Seeded into Firestore for initial admin setup'],
+    highlights: ['10 realistic screening questions', 'Model answers and rubrics', 'Default active selection rules'],
+    timeline: ['Seed from admin portal', 'Review in Firestore', 'Use for future real flows'],
+    accessUrl: demoProgram.courseAccessUrl,
+    seats: 0,
+  }
+}
 
 function AdminPrograms() {
   const [items, setItems] = useState(seedPrograms)
+  const [seedState, setSeedState] = useState({ tone: '', message: '' })
+  const [isSeeding, setIsSeeding] = useState(false)
 
   const handleToggle = (id) => {
     setItems((current) =>
@@ -38,6 +61,37 @@ function AdminPrograms() {
     ])
   }
 
+  const handleSeedDemoProgram = async () => {
+    try {
+      setIsSeeding(true)
+      setSeedState({ tone: '', message: '' })
+
+      const result = await seedDemoProgram()
+
+      setItems((current) => {
+        const alreadyVisible = current.some((program) => program.slug === demoProgram.slug)
+
+        if (alreadyVisible) {
+          return current
+        }
+
+        return [createDemoCard(), ...current]
+      })
+
+      setSeedState({
+        tone: result.created ? 'success' : 'info',
+        message: result.message,
+      })
+    } catch (error) {
+      setSeedState({
+        tone: 'error',
+        message: error.message || 'Unable to seed demo program.',
+      })
+    } finally {
+      setIsSeeding(false)
+    }
+  }
+
   return (
     <div className="stack-lg">
       <section className="panel panel--glow">
@@ -51,6 +105,24 @@ function AdminPrograms() {
           </button>
         </div>
         <p className="muted">Slug and access URL fields are mocked today, but the structure is ready for portal-managed programs later.</p>
+        {import.meta.env.DEV ? (
+          <div className="stack-md">
+            <p className="muted">
+              This is a development-only seed action. It creates the first demo program, questions, and rules in
+              Firestore.
+            </p>
+            <div className="button-row">
+              <button type="button" className="button button--ghost" onClick={handleSeedDemoProgram} disabled={isSeeding}>
+                {isSeeding ? 'Seeding Demo Program...' : 'Seed Demo Program'}
+              </button>
+            </div>
+            {seedState.message ? (
+              <p className={seedState.tone === 'error' ? 'error-copy' : seedState.tone === 'success' ? 'success-copy' : 'muted'}>
+                {seedState.message}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       <div className="program-grid">
