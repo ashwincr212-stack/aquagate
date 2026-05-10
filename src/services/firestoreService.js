@@ -52,10 +52,14 @@ export async function getPrograms() {
 }
 
 export async function getActivePrograms() {
-  const snapshot = await getDocs(
-    query(collection(requireDb(), 'programs'), where('active', '==', true), orderBy('createdAt', 'desc')),
-  )
-  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+  const snapshot = await getDocs(query(collection(requireDb(), 'programs'), where('active', '==', true)))
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .sort((left, right) => {
+      const leftMillis = typeof left.createdAt?.toMillis === 'function' ? left.createdAt.toMillis() : 0
+      const rightMillis = typeof right.createdAt?.toMillis === 'function' ? right.createdAt.toMillis() : 0
+      return rightMillis - leftMillis
+    })
 }
 
 export async function getProgramBySlug(programSlug) {
@@ -107,17 +111,27 @@ export async function updateProgram(programId, updates) {
 }
 
 // Questions
-export async function getQuestions(programId) {
-  const snapshot = await getDocs(
-    query(
-      collection(requireDb(), 'questions'),
-      where('programId', '==', programId),
-      where('active', '==', true),
-      orderBy('order', 'asc'),
-    ),
-  )
+export async function getQuestions(programRef) {
+  const database = requireDb()
+  let snapshot
 
-  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+  if (typeof programRef === 'object' && programRef !== null) {
+    if (programRef.programSlug) {
+      snapshot = await getDocs(query(collection(database, 'questions'), where('programSlug', '==', programRef.programSlug)))
+    } else if (programRef.programId) {
+      snapshot = await getDocs(query(collection(database, 'questions'), where('programId', '==', programRef.programId)))
+    }
+  } else if (typeof programRef === 'string') {
+    snapshot = await getDocs(query(collection(database, 'questions'), where('programId', '==', programRef)))
+  }
+
+  if (!snapshot) {
+    return []
+  }
+
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
 }
 
 export async function getQuestionsForProgramSlug(programSlug) {
@@ -134,7 +148,9 @@ export async function createQuestion(programId, questionData) {
     collection(requireDb(), 'questions'),
     withServerTimestamps({
       programId,
-      active: true,
+      programSlug: questionData.programSlug ?? '',
+      active: questionData.active ?? questionData.isActive ?? true,
+      isActive: questionData.isActive ?? questionData.active ?? true,
       version: 1,
       ...questionData,
     }),
@@ -150,6 +166,8 @@ export async function updateQuestion(programId, questionId, updates) {
       {
         ...updates,
         programId,
+        active: updates.active ?? updates.isActive,
+        isActive: updates.isActive ?? updates.active,
       },
       { isUpdate: true },
     ),
@@ -163,6 +181,7 @@ export async function deactivateQuestion(programId, questionId) {
       {
         programId,
         active: false,
+        isActive: false,
         deactivatedAt: serverTimestamp(),
       },
       { isUpdate: true },

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useProgram } from '../hooks/useProgram.js'
 import { useProgramQuestions } from '../hooks/useProgramQuestions.js'
 import { createSubmission, updateCandidate } from '../services/firestoreService.js'
@@ -26,6 +26,7 @@ function validateAnswers(questions, answers) {
 function Assessment() {
   const { programSlug } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { loading: programLoading, program, error: programError, fallbackMessage: programFallbackMessage } = useProgram(programSlug)
   const {
     loading: questionsLoading,
@@ -38,6 +39,7 @@ function Assessment() {
   const [answerErrors, setAnswerErrors] = useState({})
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const isAdminPreview = searchParams.get('preview') === 'admin'
   const candidateId = sessionStorage.getItem('aquagate_candidate_id')
 
   useEffect(() => {
@@ -94,8 +96,12 @@ function Assessment() {
       return
     }
 
-    if (!candidateId) {
+    if (!candidateId && !isAdminPreview) {
       setSubmitError('Please complete registration before starting the assessment.')
+      return
+    }
+
+    if (isAdminPreview) {
       return
     }
 
@@ -160,7 +166,7 @@ function Assessment() {
     )
   }
 
-  if (!candidateId) {
+  if (!candidateId && !isAdminPreview) {
     return (
       <section className="panel panel--glow">
         <p className="eyebrow">Assessment</p>
@@ -193,6 +199,7 @@ function Assessment() {
           {questions.length} Firestore-backed questions loaded. Answers stay in local state only for this step.
         </p>
         {fallbackMessage ? <p className="muted">{fallbackMessage}</p> : null}
+        {isAdminPreview ? <p className="status-pill">Admin preview mode - answers will not be submitted.</p> : null}
         {submitError ? <p className="error-copy">{submitError}</p> : null}
       </section>
 
@@ -222,9 +229,15 @@ function Assessment() {
           <button type="button" className="button button--ghost" onClick={handleSaveDraft}>
             Save Draft
           </button>
-          <button type="submit" className="button" disabled={isSubmitting}>
-            {isSubmitting ? 'Submitting assessment...' : 'Submit Assessment'}
-          </button>
+          {isAdminPreview ? (
+            <button type="button" className="button" onClick={() => navigate('/admin/questions')}>
+              Preview only - return to Admin Questions
+            </button>
+          ) : (
+            <button type="submit" className="button" disabled={isSubmitting}>
+              {isSubmitting ? 'Submitting assessment...' : 'Submit Assessment'}
+            </button>
+          )}
         </div>
         {draftSaved ? <p className="success-copy">Draft saved locally for this mocked frontend demo.</p> : null}
       </section>
