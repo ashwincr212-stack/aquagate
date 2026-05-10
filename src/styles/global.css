@@ -521,9 +521,9 @@ textarea {
   max-width: 920px;
   margin: 0 auto;
   display: grid;
-  gap: 22px;
+  gap: 16px;
   text-align: center;
-  padding: 40px;
+  padding: 30px;
 }
 
 .result-badge {
@@ -537,14 +537,20 @@ textarea {
 
 .score-hero-card {
   display: grid;
-  gap: 18px;
-  padding: 26px;
+  gap: 14px;
+  padding: 24px;
   border-radius: 24px;
   background:
     linear-gradient(140deg, rgba(11, 43, 111, 0.96), rgba(17, 79, 177, 0.9)),
     linear-gradient(180deg, rgba(201, 154, 46, 0.12), transparent);
   box-shadow: var(--shadow-lg);
   text-align: left;
+}
+
+.score-hero-copy {
+  display: grid;
+  gap: 10px;
+  max-width: 40rem;
 }
 
 .score-hero-card h1,
@@ -563,8 +569,8 @@ textarea {
 }
 
 .score-total-pill {
-  min-width: 180px;
-  padding: 16px 18px;
+  min-width: 170px;
+  padding: 14px 16px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -582,7 +588,7 @@ textarea {
 .score-total-pill strong {
   display: block;
   margin-top: 6px;
-  font-size: 1.8rem;
+  font-size: 1.55rem;
   letter-spacing: -0.05em;
 }
 
@@ -600,6 +606,10 @@ textarea {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.result-grid--compact {
+  gap: 14px;
+}
+
 .feedback-board {
   text-align: left;
 }
@@ -608,10 +618,14 @@ textarea {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.feedback-card-grid--compact {
+  gap: 12px;
+}
+
 .feedback-card {
   display: grid;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 14px;
   border-radius: 18px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(240, 246, 255, 0.95));
   border: 1px solid var(--line);
@@ -623,6 +637,7 @@ textarea {
 
 .feedback-card p {
   color: var(--text-soft);
+  line-height: 1.55;
 }
 
 .feedback-tags {

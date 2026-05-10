@@ -30,8 +30,8 @@ const resultMap = {
     copy: 'Your submission is waiting for the scoring pipeline.',
   },
   admin_approved: {
-    title: 'Congratulations — you have been approved.',
-    copy: 'The admin team has approved your application.',
+    title: 'Congratulations - you have been approved.',
+    copy: 'Your application has been approved by the admin team.',
   },
   admin_rejected: {
     title: 'Application not selected.',
@@ -121,36 +121,63 @@ function getTotalMaxScore(submission) {
 function getResultHeroContent(status) {
   if (status === 'admin_approved') {
     return {
-      title: 'Congratulations — you have been approved.',
-      copy: 'The admin team has approved your application.',
+      title: 'Congratulations - you have been approved.',
+      subtitle: 'Your application has been approved by the admin team.',
     }
   }
 
   if (status === 'admin_rejected') {
     return {
       title: 'Application not selected.',
-      copy: 'Your application was reviewed, but was not selected at this stage.',
+      subtitle: 'Your application was reviewed, but was not selected at this stage.',
     }
   }
 
   if (status === 'waitlisted') {
     return {
       title: 'You are on the waitlist.',
-      copy: 'Your application is being held for seat availability or priority review.',
+      subtitle: 'Your application is being held for seat availability or priority review.',
     }
   }
 
   if (status === 'borderline_review') {
     return {
       title: 'Manual review in progress.',
-      copy: 'Your application needs additional review before a final decision.',
+      subtitle: 'Your application needs additional review before a final decision.',
+    }
+  }
+
+  if (status === 'pending_ai_score') {
+    return {
+      title: 'Your assessment has been submitted.',
+      subtitle: 'AI review is not connected yet or is still pending.',
     }
   }
 
   return {
     title: 'Your assessment has been scored.',
-    copy: resultMap[status]?.copy ?? 'Your submission has an updated review outcome.',
+    subtitle: 'The admin team will review the result before a final decision.',
   }
+}
+
+function getNextStepCopy(status) {
+  if (status === 'admin_approved') {
+    return 'The team can now contact you with next steps.'
+  }
+
+  if (status === 'waitlisted') {
+    return 'You may be contacted if a seat opens or your priority changes.'
+  }
+
+  if (status === 'admin_rejected') {
+    return 'You can improve your application and try again in a future cohort.'
+  }
+
+  if (status === 'borderline_review') {
+    return 'The admin team may manually review your application.'
+  }
+
+  return 'The admin team will review your assessment.'
 }
 
 function Result() {
@@ -226,53 +253,63 @@ function Result() {
 
     const currentStatus = firestoreSubmission.status ?? 'pending_ai_score'
     const heroContent = getResultHeroContent(currentStatus)
+    const nextStepCopy = getNextStepCopy(currentStatus)
+    const hasScoredState = currentStatus !== 'pending_ai_score'
 
     return (
       <section className="result-shell panel panel--glow">
-        {currentStatus !== 'pending_ai_score' ? (
+        <section className="score-hero-card">
+          <div className="score-hero-card__head">
+            <div className="score-hero-copy">
+              <div className="result-badge">{getCandidateStatusLabel(currentStatus)}</div>
+              <h1>{heroContent.title}</h1>
+              <p className="hero-copy">{heroContent.subtitle}</p>
+            </div>
+            {typeof firestoreSubmission.totalScore === 'number' ? (
+              <div className="score-total-pill">
+                <span>Overall Score</span>
+                <strong>{firestoreSubmission.totalScore} / {getTotalMaxScore(firestoreSubmission)}</strong>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="score-meta-grid">
+            <div className="info-card">
+              <p>Scoring source</p>
+              <strong>{getScoringSourceLabel(firestoreSubmission)}</strong>
+            </div>
+            <div className="info-card">
+              <p>Program</p>
+              <strong>{firestoreSubmission.programTitle || firestoreSubmission.programSlug}</strong>
+            </div>
+            <div className="info-card">
+              <p>Submitted at</p>
+              <strong>{formatSubmittedAt(firestoreSubmission.submittedAt)}</strong>
+            </div>
+            <div className="info-card">
+              <p>Scored at</p>
+              <strong>{formatSubmittedAt(firestoreSubmission.scoredAt)}</strong>
+            </div>
+          </div>
+        </section>
+
+        <div className="result-grid result-grid--wide result-grid--compact">
+          <article className="panel result-note">
+            <h3>What happens next?</h3>
+            <p>{nextStepCopy}</p>
+          </article>
+
+          {firestoreSubmission.adminDecisionNote ? (
+            <article className="panel result-note">
+              <h3>Admin Note</h3>
+              <p>{firestoreSubmission.adminDecisionNote}</p>
+            </article>
+          ) : null}
+        </div>
+
+        {hasScoredState ? (
           <>
-            <section className="score-hero-card">
-              <div className="score-hero-card__head">
-                <div>
-                  <div className="result-badge">{getCandidateStatusLabel(currentStatus)}</div>
-                  <h1>{heroContent.title}</h1>
-                </div>
-                <div className="score-total-pill">
-                  <span>Overall Score</span>
-                  <strong>
-                    {`${firestoreSubmission.totalScore} / ${getTotalMaxScore(firestoreSubmission)}`}
-                  </strong>
-                </div>
-              </div>
-              <p className="hero-copy">{heroContent.copy}</p>
-              <div className="score-meta-grid">
-                <div className="info-card">
-                  <p>Scoring source</p>
-                  <strong>{getScoringSourceLabel(firestoreSubmission)}</strong>
-                </div>
-                <div className="info-card">
-                  <p>Program</p>
-                  <strong>{firestoreSubmission.programTitle || firestoreSubmission.programSlug}</strong>
-                </div>
-                <div className="info-card">
-                  <p>Submitted at</p>
-                  <strong>{formatSubmittedAt(firestoreSubmission.submittedAt)}</strong>
-                </div>
-                <div className="info-card">
-                  <p>Scored at</p>
-                  <strong>{formatSubmittedAt(firestoreSubmission.scoredAt)}</strong>
-                </div>
-              </div>
-            </section>
-
-            <div className="result-grid result-grid--wide">
-              {firestoreSubmission.adminDecisionNote ? (
-                <article className="panel result-note">
-                  <h3>Admin Note</h3>
-                  <p>{firestoreSubmission.adminDecisionNote}</p>
-                </article>
-              ) : null}
-
+            <div className="result-grid result-grid--wide result-grid--compact">
               <article className="panel result-note">
                 <h3>AI Summary</h3>
                 <p>{firestoreSubmission.aiSummary || 'Summary not available.'}</p>
@@ -286,8 +323,13 @@ function Result() {
 
             {Array.isArray(firestoreSubmission.aiScores) && firestoreSubmission.aiScores.length ? (
               <article className="panel result-note feedback-board">
-                <h3>Per-question feedback</h3>
-                <div className="feedback-card-grid">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">AI Feedback</p>
+                    <h3>Per-question feedback</h3>
+                  </div>
+                </div>
+                <div className="feedback-card-grid feedback-card-grid--compact">
                   {firestoreSubmission.aiScores.map((scoreItem, index) => (
                     <div key={`${firestoreSubmission.id}-feedback-${scoreItem.questionId}`} className="feedback-card">
                       <div className="feedback-card__head">
@@ -320,32 +362,20 @@ function Result() {
             ) : null}
           </>
         ) : (
-          <>
-            <div className="result-badge">{getCandidateStatusLabel(firestoreSubmission.status ?? 'pending_ai_score')}</div>
-            <h1>Your assessment has been submitted.</h1>
-            <p className="hero-copy">AI review is not connected yet. Current status: Pending AI score.</p>
-
-            <div className="result-grid">
-              <div className="info-card">
-                <p>Submission ID</p>
-                <strong>{submissionId}</strong>
-              </div>
-              <div className="info-card">
-                <p>Program</p>
-                <strong>{firestoreSubmission.programTitle || firestoreSubmission.programSlug}</strong>
-              </div>
-              <div className="info-card">
-                <p>Total questions</p>
-                <strong>{firestoreSubmission.totalQuestions}</strong>
-              </div>
+          <div className="result-grid result-grid--compact">
+            <div className="info-card">
+              <p>Submission ID</p>
+              <strong>{submissionId}</strong>
             </div>
-
-            <article className="panel result-note">
-              <h3>Current review state</h3>
-              <p>Status: {getCandidateStatusLabel(firestoreSubmission.status)}</p>
-              <p>Submitted at: {formatSubmittedAt(firestoreSubmission.submittedAt)}</p>
-            </article>
-          </>
+            <div className="info-card">
+              <p>Program</p>
+              <strong>{firestoreSubmission.programTitle || firestoreSubmission.programSlug}</strong>
+            </div>
+            <div className="info-card">
+              <p>Total questions</p>
+              <strong>{firestoreSubmission.totalQuestions}</strong>
+            </div>
+          </div>
         )}
       </section>
     )
