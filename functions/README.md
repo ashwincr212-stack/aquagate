@@ -15,10 +15,13 @@ This folder is the backend skeleton for future AI scoring in AquaGate.
 Gemini is planned as the first real provider later because it is expected to be more cost-effective for this project.
 
 That future step must still keep all provider access on the backend only.
+Gemini placeholders can be prepared locally, but no real Gemini call should happen until backend secrets are configured.
 
 ## Security Rules
 
 - API keys must be stored backend-only using Firebase secrets or secure backend environment variables.
+- Use Firebase Secret Manager or secure backend env later for Gemini.
+- Do not put Gemini keys in root `.env`, `functions/.env`, or Vite env files.
 - Frontend must never contain Gemini, OpenAI, or Claude API keys.
 - Browser code must never call the AI provider directly.
 
@@ -33,6 +36,7 @@ That future step must still keep all provider access on the backend only.
 
 - `index.js`: callable `scoreSubmission` skeleton
 - `services/firestoreAccess.js`: Firestore read/write helpers
+- `services/geminiProvider.js`: Gemini prompt and response placeholders only
 - `services/promptBuilder.js`: future Gemini payload builder
 - `services/scoringService.js`: deterministic backend mock scorer
 - `services/rulesEngine.js`: backend rule evaluation
@@ -72,3 +76,4 @@ Notes:
 - No Blaze is needed for the local emulator flow.
 - Blaze is needed later only when deploying Cloud Functions.
 - No Gemini key is needed yet because this backend path is still mock-only.
+- Local emulator testing can validate the backend flow before any deployment step.

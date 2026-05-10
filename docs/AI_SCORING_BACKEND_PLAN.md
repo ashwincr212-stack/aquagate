@@ -172,6 +172,36 @@ Notes for India:
 Firebase/Node compatibility:
 - Strong
 
+### Gemini First-Provider Plan
+
+Gemini is the planned first real provider for AquaGate because it is expected to be more cost-effective for this workflow.
+
+Why Gemini first:
+- Lower expected cost for repeated scoring runs
+- Natural fit with a Firebase and Google Cloud oriented backend
+- Good Node.js backend compatibility for Cloud Functions or Cloud Run
+
+Safe usage rules:
+- Gemini must be called from the backend only
+- Frontend must never contain Gemini keys
+- Vite env must never contain Gemini secrets
+- Prompt construction should remain on the backend
+- Response JSON must be validated server-side before any Firestore write
+
+Secret handling later:
+- Store Gemini secrets in Firebase Secret Manager or secure backend environment configuration
+- Do not store Gemini keys in frontend `.env`
+- Do not store Gemini keys in browser-exposed runtime config
+
+Local testing path:
+- Keep using the Firebase Functions emulator locally
+- Test prompt building and response validation with mock responses before adding any real provider call
+- Keep Firestore writes and rule application verified through the emulator-backed backend path
+
+Production path:
+- Real deployed Cloud Functions will require Blaze later
+- Gemini should only be enabled after backend validation, secret storage, and deployment readiness are complete
+
 ### Claude
 
 Strengths:
