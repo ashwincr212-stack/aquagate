@@ -57,7 +57,7 @@ function CandidateTable({ submissions, activeFilter, onFilterChange, onSelectCan
                 <td>{submission.email}</td>
                 <td>{submission.phone}</td>
                 <td>{submission.programTitle}</td>
-                <td>{submission.status}</td>
+                <td>{submission.statusLabel}</td>
                 <td>{submission.scoreLabel}</td>
                 <td>{submission.borderline ? 'Yes' : 'No'}</td>
                 <td>{submission.submittedAtLabel}</td>

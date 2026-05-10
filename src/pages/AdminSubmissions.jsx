@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import CandidateTable from '../components/CandidateTable.jsx'
 import { applyMockAiScore, prepareSubmissionForScoring } from '../services/aiScoringService.js'
 import { scoreSubmissionWithBackendMock, scoreSubmissionWithGemini } from '../services/functionsService.js'
-import { getActiveRules, getAllSubmissions, getCandidate, getQuestions, updateSubmission } from '../services/firestoreService.js'
+import { getActiveRules, getAllSubmissions, getCandidate, getQuestions, updateCandidate, updateSubmission } from '../services/firestoreService.js'
 import { getCandidateStatusLabel } from '../utils/statusUtils.js'
 
 function formatTimestamp(value) {
@@ -117,6 +117,7 @@ function normalizeSubmissionForAdmin(submission, candidate) {
     scoredAtLabel: formatTimestamp(submission.scoredAt),
     emailSent: Boolean(submission.emailSent),
     adminDecision: submission.adminDecision ?? 'Pending',
+    adminDecisionNote: submission.adminDecisionNote ?? '',
     adminNotes: submission.adminNotes ?? '',
     totalQuestions: submission.totalQuestions ?? submission.answers?.length ?? 0,
     answers: Array.isArray(submission.answers) ? submission.answers : [],
@@ -131,6 +132,7 @@ function AdminSubmissions() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [actionState, setActionState] = useState({ saving: false, error: '', message: '' })
+  const [adminDecisionNote, setAdminDecisionNote] = useState('')
   const isDevMode = import.meta.env.DEV === true
 
   useEffect(() => {
@@ -209,19 +211,37 @@ function AdminSubmissions() {
     })
   }, [filteredSubmissions])
 
+  useEffect(() => {
+    setAdminDecisionNote(selectedCandidate?.adminDecisionNote ?? '')
+  }, [selectedCandidate])
+
   const updateDecision = async (adminDecision, status) => {
     if (!selectedCandidate) {
       return
     }
 
+    const isFinalDecision = status === 'admin_approved' || status === 'admin_rejected' || status === 'waitlisted'
+    const nextAdminDecisionAt = new Date().toISOString()
+
     try {
       setActionState({ saving: true, error: '', message: '' })
       await updateSubmission(selectedCandidate.id, {
         adminDecision,
-        adminDecisionAt: new Date().toISOString(),
+        adminDecisionAt: nextAdminDecisionAt,
+        adminDecisionNote: adminDecisionNote.trim(),
+        finalDecision: isFinalDecision,
         status,
         borderline: status === 'borderline_review',
       })
+
+      if (selectedCandidate.candidateId) {
+        await updateCandidate(selectedCandidate.candidateId, {
+          status,
+          adminDecision,
+          adminDecisionAt: nextAdminDecisionAt,
+          adminDecisionNote: adminDecisionNote.trim(),
+        })
+      }
 
       setSubmissions((current) =>
         current.map((submission) =>
@@ -229,6 +249,7 @@ function AdminSubmissions() {
             ? {
                 ...submission,
                 adminDecision,
+                adminDecisionNote: adminDecisionNote.trim(),
                 status,
                 statusLabel: getCandidateStatusLabel(status),
                 borderline: status === 'borderline_review',
@@ -241,6 +262,7 @@ function AdminSubmissions() {
           ? {
               ...current,
               adminDecision,
+              adminDecisionNote: adminDecisionNote.trim(),
               status,
               statusLabel: getCandidateStatusLabel(status),
               borderline: status === 'borderline_review',
@@ -252,7 +274,7 @@ function AdminSubmissions() {
       return
     }
 
-    setActionState({ saving: false, error: '', message: '' })
+    setActionState({ saving: false, error: '', message: `${adminDecision} decision saved successfully.` })
   }
 
   const handleMockAiScore = async () => {
@@ -517,6 +539,16 @@ function AdminSubmissions() {
             {actionState.error ? <p className="error-copy">{actionState.error}</p> : null}
             {actionState.message ? <p className="success-copy">{actionState.message}</p> : null}
 
+            <label className="field">
+              <span>Admin decision note</span>
+              <textarea
+                rows="3"
+                placeholder="Optional context for the final decision..."
+                value={adminDecisionNote}
+                onChange={(event) => setAdminDecisionNote(event.target.value)}
+              />
+            </label>
+
             <div className="button-row button-row--stack">
               <button
                 type="button"
@@ -559,7 +591,7 @@ function AdminSubmissions() {
                 type="button"
                 className="button button--ghost"
                 disabled={actionState.saving}
-                onClick={() => updateDecision('Borderline', 'borderline_review')}
+                onClick={() => updateDecision('Borderline Review', 'borderline_review')}
               >
                 Mark borderline
               </button>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import StatCard from '../components/StatCard.jsx'
 import { getAllCandidates, getAllSubmissions, getPrograms } from '../services/firestoreService.js'
 import { getAiProviderStatus } from '../services/functionsService.js'
+import { getCandidateStatusLabel } from '../utils/statusUtils.js'
 
 function formatTimestamp(value) {
   if (!value) {
@@ -165,9 +166,8 @@ function AdminDashboard() {
     const pendingAiReview = submissions.filter((submission) => (submission.status ?? 'pending_ai_score') === 'pending_ai_score').length
     const shortlisted = submissions.filter((submission) => submission.status === 'shortlisted').length
     const waitlisted = submissions.filter((submission) => submission.status === 'waitlisted').length
-    const rejected = submissions.filter(
-      (submission) => submission.status === 'admin_rejected' || submission.status === 'rejected',
-    ).length
+    const adminApproved = submissions.filter((submission) => submission.status === 'admin_approved').length
+    const adminRejected = submissions.filter((submission) => submission.status === 'admin_rejected').length
     const borderlineReview = submissions.filter(
       (submission) => submission.status === 'borderline_review' || submission.borderline === true,
     ).length
@@ -185,7 +185,8 @@ function AdminDashboard() {
       { label: 'Pending AI review', value: `${pendingAiReview}`, delta: 'Status: pending_ai_score' },
       { label: 'Shortlisted', value: `${shortlisted}`, delta: 'Status: shortlisted' },
       { label: 'Waitlisted', value: `${waitlisted}`, delta: 'Status: waitlisted' },
-      { label: 'Rejected', value: `${rejected}`, delta: 'Status: rejected or admin_rejected' },
+      { label: 'Admin approved', value: `${adminApproved}`, delta: 'Status: admin_approved' },
+      { label: 'Admin rejected', value: `${adminRejected}`, delta: 'Status: admin_rejected' },
       { label: 'Borderline review', value: `${borderlineReview}`, delta: 'Status or borderline flag' },
       { label: 'Active programs', value: `${activePrograms}`, delta: 'Programs where active' },
       { label: 'Average score', value: `${averageScore}`, delta: scoredSubmissions.length ? 'Across scored submissions' : 'No AI scores yet' },
@@ -204,7 +205,7 @@ function AdminDashboard() {
           id: submission.id,
           candidateName: candidate?.fullName ?? 'Unknown Candidate',
           programTitle: submission.programTitle ?? submission.programSlug ?? 'Untitled Program',
-          status: submission.status ?? 'pending_ai_score',
+          status: getCandidateStatusLabel(submission.status ?? 'pending_ai_score'),
           submittedAtLabel: formatTimestamp(submission.submittedAt ?? submission.createdAt),
           scoreLabel: typeof submission.totalScore === 'number' ? `${submission.totalScore}` : 'Pending',
         }
@@ -215,9 +216,8 @@ function AdminDashboard() {
     const pending = submissions.filter((submission) => (submission.status ?? 'pending_ai_score') === 'pending_ai_score').length
     const shortlisted = submissions.filter((submission) => submission.status === 'shortlisted').length
     const waitlisted = submissions.filter((submission) => submission.status === 'waitlisted').length
-    const rejected = submissions.filter(
-      (submission) => submission.status === 'admin_rejected' || submission.status === 'rejected',
-    ).length
+    const approved = submissions.filter((submission) => submission.status === 'admin_approved').length
+    const rejected = submissions.filter((submission) => submission.status === 'admin_rejected').length
     const borderline = submissions.filter(
       (submission) => submission.status === 'borderline_review' || submission.borderline === true,
     ).length
@@ -226,7 +226,8 @@ function AdminDashboard() {
       { label: 'Pending AI score', value: pending },
       { label: 'Shortlisted', value: shortlisted },
       { label: 'Waitlisted', value: waitlisted },
-      { label: 'Rejected', value: rejected },
+      { label: 'Admin Approved', value: approved },
+      { label: 'Admin Rejected', value: rejected },
       { label: 'Borderline', value: borderline },
     ]
   }, [submissions])
@@ -261,7 +262,7 @@ function AdminDashboard() {
             <p className="eyebrow">Operations overview</p>
             <h2>Selection activity across all active gateways</h2>
           </div>
-          <span className="status-pill">{stats[9].value} active programs</span>
+          <span className="status-pill">{stats[10].value} active programs</span>
         </div>
         <p className="muted">
           {hasAnyData

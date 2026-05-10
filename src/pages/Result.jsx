@@ -29,6 +29,14 @@ const resultMap = {
     title: 'Pending Review',
     copy: 'Your submission is waiting for the scoring pipeline.',
   },
+  admin_approved: {
+    title: 'Congratulations — you have been approved.',
+    copy: 'The admin team has approved your application.',
+  },
+  admin_rejected: {
+    title: 'Application not selected.',
+    copy: 'Your application was reviewed, but was not selected at this stage.',
+  },
 }
 
 function formatSubmittedAt(value) {
@@ -110,6 +118,41 @@ function getTotalMaxScore(submission) {
   return fallbackTotal > 0 ? fallbackTotal : 100
 }
 
+function getResultHeroContent(status) {
+  if (status === 'admin_approved') {
+    return {
+      title: 'Congratulations — you have been approved.',
+      copy: 'The admin team has approved your application.',
+    }
+  }
+
+  if (status === 'admin_rejected') {
+    return {
+      title: 'Application not selected.',
+      copy: 'Your application was reviewed, but was not selected at this stage.',
+    }
+  }
+
+  if (status === 'waitlisted') {
+    return {
+      title: 'You are on the waitlist.',
+      copy: 'Your application is being held for seat availability or priority review.',
+    }
+  }
+
+  if (status === 'borderline_review') {
+    return {
+      title: 'Manual review in progress.',
+      copy: 'Your application needs additional review before a final decision.',
+    }
+  }
+
+  return {
+    title: 'Your assessment has been scored.',
+    copy: resultMap[status]?.copy ?? 'Your submission has an updated review outcome.',
+  }
+}
+
 function Result() {
   const { submissionId } = useParams()
   const [searchParams] = useSearchParams()
@@ -181,15 +224,18 @@ function Result() {
       )
     }
 
+    const currentStatus = firestoreSubmission.status ?? 'pending_ai_score'
+    const heroContent = getResultHeroContent(currentStatus)
+
     return (
       <section className="result-shell panel panel--glow">
-        {(firestoreSubmission.status ?? 'pending_ai_score') !== 'pending_ai_score' ? (
+        {currentStatus !== 'pending_ai_score' ? (
           <>
             <section className="score-hero-card">
               <div className="score-hero-card__head">
                 <div>
-                  <div className="result-badge">{getCandidateStatusLabel(firestoreSubmission.status ?? 'pending_ai_score')}</div>
-                  <h1>Your assessment has been scored.</h1>
+                  <div className="result-badge">{getCandidateStatusLabel(currentStatus)}</div>
+                  <h1>{heroContent.title}</h1>
                 </div>
                 <div className="score-total-pill">
                   <span>Overall Score</span>
@@ -198,9 +244,7 @@ function Result() {
                   </strong>
                 </div>
               </div>
-              <p className="hero-copy">
-                {resultMap[firestoreSubmission.status]?.copy ?? 'Your submission has an updated review outcome.'}
-              </p>
+              <p className="hero-copy">{heroContent.copy}</p>
               <div className="score-meta-grid">
                 <div className="info-card">
                   <p>Scoring source</p>
@@ -222,6 +266,13 @@ function Result() {
             </section>
 
             <div className="result-grid result-grid--wide">
+              {firestoreSubmission.adminDecisionNote ? (
+                <article className="panel result-note">
+                  <h3>Admin Note</h3>
+                  <p>{firestoreSubmission.adminDecisionNote}</p>
+                </article>
+              ) : null}
+
               <article className="panel result-note">
                 <h3>AI Summary</h3>
                 <p>{firestoreSubmission.aiSummary || 'Summary not available.'}</p>
