@@ -27,6 +27,7 @@ That future step must still keep all provider access on the backend only.
 - Blaze is not required for this local skeleton step.
 - Blaze will be needed later for deployed Firebase Cloud Functions in production.
 - Local Emulator testing can happen before production deployment.
+- Gemini API keys are not needed for the emulator step.
 
 ## What Exists Here
 
@@ -47,3 +48,27 @@ That future step must still keep all provider access on the backend only.
 ## Next Safe Step
 
 Use the Firebase Emulator to test backend reads, writes, and mock scoring logic before any real provider integration.
+
+## Local Test Flow
+
+Terminal 1:
+
+```bash
+npm run dev
+```
+
+Terminal 2:
+
+```bash
+npm run functions:serve
+```
+
+Then test:
+- Go to `Admin Submissions`
+- Select a submission
+- Click `Backend Mock Score`
+
+Notes:
+- No Blaze is needed for the local emulator flow.
+- Blaze is needed later only when deploying Cloud Functions.
+- No Gemini key is needed yet because this backend path is still mock-only.

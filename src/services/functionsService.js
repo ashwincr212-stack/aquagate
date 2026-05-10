@@ -13,7 +13,7 @@ function getFriendlyFunctionError(error) {
     message.toLowerCase().includes('service unavailable') ||
     message.toLowerCase().includes('failed to fetch')
   ) {
-    return 'Backend function is not running. Start Firebase emulator or deploy the function later.'
+    return 'Backend function is not running. Start the Functions emulator with npm run functions:serve.'
   }
 
   return `Unable to score submission with backend mock. ${message || 'Unknown backend function error.'}`

@@ -1,11 +1,12 @@
 const admin = require('firebase-admin')
+const { FieldValue, getFirestore } = require('firebase-admin/firestore')
 
 function getDb() {
   if (!admin.apps.length) {
     admin.initializeApp()
   }
 
-  return admin.firestore()
+  return getFirestore()
 }
 
 function normalizeSnapshot(snapshot) {
@@ -95,7 +96,7 @@ async function getActiveRules(programSlug) {
 
 async function updateSubmissionScore(submissionId, scorePayload) {
   const submissionRef = getDb().collection('submissions').doc(submissionId)
-  const timestamp = admin.firestore.FieldValue.serverTimestamp()
+  const timestamp = FieldValue.serverTimestamp()
 
   await submissionRef.update({
     ...scorePayload,

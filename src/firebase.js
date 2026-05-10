@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
-import { getFunctions } from 'firebase/functions'
+import { connectFunctionsEmulator, getFunctions } from 'firebase/functions'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -18,6 +18,15 @@ export const app = hasFirebaseConfig ? initializeApp(firebaseConfig) : null
 export const auth = app ? getAuth(app) : null
 export const db = app ? getFirestore(app) : null
 export const functions = app ? getFunctions(app) : null
+
+if (functions && import.meta.env.DEV === true) {
+  const emulatorFlag = '__aquagate_functions_emulator_connected__'
+
+  if (!globalThis[emulatorFlag]) {
+    connectFunctionsEmulator(functions, '127.0.0.1', 5001)
+    globalThis[emulatorFlag] = true
+  }
+}
 
 export const firebaseStatus = {
   connected: Boolean(app),

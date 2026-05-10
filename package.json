@@ -8,7 +8,9 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "functions:install": "cd functions && npm install"
+    "functions:install": "cd functions && npm install",
+    "functions:serve": "firebase emulators:start --only functions",
+    "emulators": "firebase emulators:start"
   },
   "dependencies": {
     "firebase": "^12.13.0",
