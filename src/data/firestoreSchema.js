@@ -70,6 +70,8 @@ export const submissionSchema = {
   candidateId: '',
   answers: [],
   aiScores: [],
+  aiSummary: '',
+  aiRecommendation: '',
   totalScore: 0,
   status: 'pending_ai_score',
   borderline: false,

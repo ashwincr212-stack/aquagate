@@ -78,9 +78,11 @@ function AdminDashboard() {
     const registered = candidates.filter((candidate) => candidate.status === 'registered').length
     const assessmentSubmitted = candidates.filter((candidate) => candidate.status === 'assessment_submitted').length
     const pendingAiReview = submissions.filter((submission) => (submission.status ?? 'pending_ai_score') === 'pending_ai_score').length
+    const shortlisted = submissions.filter((submission) => submission.status === 'shortlisted').length
     const waitlisted = submissions.filter((submission) => submission.status === 'waitlisted').length
-    const adminApproved = submissions.filter((submission) => submission.status === 'admin_approved').length
-    const adminRejected = submissions.filter((submission) => submission.status === 'admin_rejected').length
+    const rejected = submissions.filter(
+      (submission) => submission.status === 'admin_rejected' || submission.status === 'rejected',
+    ).length
     const borderlineReview = submissions.filter(
       (submission) => submission.status === 'borderline_review' || submission.borderline === true,
     ).length
@@ -96,9 +98,9 @@ function AdminDashboard() {
       { label: 'Assessment submitted', value: `${assessmentSubmitted}`, delta: 'Status: assessment_submitted' },
       { label: 'Total submissions', value: `${submissions.length}`, delta: 'Submissions collection' },
       { label: 'Pending AI review', value: `${pendingAiReview}`, delta: 'Status: pending_ai_score' },
+      { label: 'Shortlisted', value: `${shortlisted}`, delta: 'Status: shortlisted' },
       { label: 'Waitlisted', value: `${waitlisted}`, delta: 'Status: waitlisted' },
-      { label: 'Admin approved', value: `${adminApproved}`, delta: 'Status: admin_approved' },
-      { label: 'Admin rejected', value: `${adminRejected}`, delta: 'Status: admin_rejected' },
+      { label: 'Rejected', value: `${rejected}`, delta: 'Status: rejected or admin_rejected' },
       { label: 'Borderline review', value: `${borderlineReview}`, delta: 'Status or borderline flag' },
       { label: 'Active programs', value: `${activePrograms}`, delta: 'Programs where active' },
       { label: 'Average score', value: `${averageScore}`, delta: scoredSubmissions.length ? 'Across scored submissions' : 'No AI scores yet' },
@@ -126,8 +128,8 @@ function AdminDashboard() {
 
   const statusSummary = useMemo(() => {
     const pending = submissions.filter((submission) => (submission.status ?? 'pending_ai_score') === 'pending_ai_score').length
+    const shortlisted = submissions.filter((submission) => submission.status === 'shortlisted').length
     const waitlisted = submissions.filter((submission) => submission.status === 'waitlisted').length
-    const approved = submissions.filter((submission) => submission.status === 'admin_approved').length
     const rejected = submissions.filter(
       (submission) => submission.status === 'admin_rejected' || submission.status === 'rejected',
     ).length
@@ -137,8 +139,8 @@ function AdminDashboard() {
 
     return [
       { label: 'Pending AI score', value: pending },
+      { label: 'Shortlisted', value: shortlisted },
       { label: 'Waitlisted', value: waitlisted },
-      { label: 'Approved', value: approved },
       { label: 'Rejected', value: rejected },
       { label: 'Borderline', value: borderline },
     ]

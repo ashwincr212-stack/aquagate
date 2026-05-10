@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { getResultBySubmissionId } from '../data/mockData.js'
 import { getSubmission } from '../services/firestoreService.js'
+import { getCandidateStatusLabel } from '../utils/statusUtils.js'
 
 const resultMap = {
   shortlisted: {
@@ -15,6 +16,18 @@ const resultMap = {
   review: {
     title: 'Under Review',
     copy: 'Your submission entered the manual review lane because it is close to the active criteria thresholds.',
+  },
+  borderline_review: {
+    title: 'Borderline Review',
+    copy: 'Your submission needs manual review before a final decision is made.',
+  },
+  rejected: {
+    title: 'Rejected',
+    copy: 'Your current score did not meet the configured selection thresholds.',
+  },
+  pending_ai_score: {
+    title: 'Pending Review',
+    copy: 'Your submission is waiting for the scoring pipeline.',
   },
 }
 
@@ -107,9 +120,17 @@ function Result() {
 
     return (
       <section className="result-shell panel panel--glow">
-        <div className="result-badge">Pending Review</div>
-        <h1>Your assessment has been submitted.</h1>
-        <p className="hero-copy">AI review is not connected yet. Current status: Pending AI score.</p>
+        <div className="result-badge">{getCandidateStatusLabel(firestoreSubmission.status ?? 'pending_ai_score')}</div>
+        <h1>
+          {(firestoreSubmission.status ?? 'pending_ai_score') === 'pending_ai_score'
+            ? 'Your assessment has been submitted.'
+            : 'Your assessment has been scored.'}
+        </h1>
+        <p className="hero-copy">
+          {(firestoreSubmission.status ?? 'pending_ai_score') === 'pending_ai_score'
+            ? 'AI review is not connected yet. Current status: Pending AI score.'
+            : (resultMap[firestoreSubmission.status]?.copy ?? 'Your submission has an updated review outcome.')}
+        </p>
 
         <div className="result-grid">
           <div className="info-card">
@@ -124,13 +145,42 @@ function Result() {
             <p>Total questions</p>
             <strong>{firestoreSubmission.totalQuestions}</strong>
           </div>
+          {typeof firestoreSubmission.totalScore === 'number' ? (
+            <div className="info-card">
+              <p>Total score</p>
+              <strong>{firestoreSubmission.totalScore}</strong>
+            </div>
+          ) : null}
         </div>
 
         <article className="panel result-note">
           <h3>Current review state</h3>
           <p>Status: {firestoreSubmission.status}</p>
           <p>Submitted at: {formatSubmittedAt(firestoreSubmission.submittedAt)}</p>
+          {typeof firestoreSubmission.totalScore === 'number' ? <p>Score: {firestoreSubmission.totalScore}</p> : null}
+          {firestoreSubmission.scoredAt ? <p>Scored at: {formatSubmittedAt(firestoreSubmission.scoredAt)}</p> : null}
         </article>
+
+        {(firestoreSubmission.status ?? 'pending_ai_score') !== 'pending_ai_score' ? (
+          <>
+            <article className="panel result-note">
+              <h3>AI summary</h3>
+              <p>{firestoreSubmission.aiSummary || 'Summary not available.'}</p>
+              <p>{firestoreSubmission.aiRecommendation || 'Recommendation not available.'}</p>
+            </article>
+
+            {Array.isArray(firestoreSubmission.aiScores) && firestoreSubmission.aiScores.length ? (
+              <article className="panel result-note">
+                <h3>Per-question feedback</h3>
+                {firestoreSubmission.aiScores.map((scoreItem) => (
+                  <p key={`${firestoreSubmission.id}-feedback-${scoreItem.questionId}`}>
+                    Q{scoreItem.order}: {scoreItem.score}/{scoreItem.maxScore} | {scoreItem.feedback}
+                  </p>
+                ))}
+              </article>
+            ) : null}
+          </>
+        ) : null}
       </section>
     )
   }

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import CandidateTable from '../components/CandidateTable.jsx'
-import { getAllSubmissions, getCandidate, updateSubmission } from '../services/firestoreService.js'
+import { applyMockAiScore, prepareSubmissionForScoring } from '../services/aiScoringService.js'
+import { getActiveRules, getAllSubmissions, getCandidate, getQuestions, updateSubmission } from '../services/firestoreService.js'
 import { getCandidateStatusLabel } from '../utils/statusUtils.js'
 
 function formatTimestamp(value) {
@@ -25,6 +27,7 @@ function normalizeSubmissionForAdmin(submission, candidate) {
   return {
     id: submission.id,
     candidateId: submission.candidateId ?? '',
+    programId: submission.programId ?? '',
     name: candidate?.fullName ?? 'Unknown Candidate',
     email: candidate?.email ?? 'Unavailable',
     phone: candidate?.phone ?? 'Unavailable',
@@ -38,8 +41,13 @@ function normalizeSubmissionForAdmin(submission, candidate) {
     score: submission.totalScore,
     scoreLabel: submission.totalScore == null ? 'Pending' : `${submission.totalScore}`,
     borderline: Boolean(submission.borderline),
+    aiSummary: submission.aiSummary ?? '',
+    aiRecommendation: submission.aiRecommendation ?? '',
+    aiScores: Array.isArray(submission.aiScores) ? submission.aiScores : [],
+    ruleUsedSnapshot: submission.ruleUsedSnapshot ?? null,
     submittedAt: submission.submittedAt ?? null,
     submittedAtLabel: formatTimestamp(submission.submittedAt),
+    scoredAtLabel: formatTimestamp(submission.scoredAt),
     emailSent: Boolean(submission.emailSent),
     adminDecision: submission.adminDecision ?? 'Pending',
     adminNotes: submission.adminNotes ?? '',
@@ -49,12 +57,14 @@ function normalizeSubmissionForAdmin(submission, candidate) {
 }
 
 function AdminSubmissions() {
+  const navigate = useNavigate()
   const [submissions, setSubmissions] = useState([])
   const [activeFilter, setActiveFilter] = useState('all')
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [actionState, setActionState] = useState({ saving: false, error: '' })
+  const isDevMode = import.meta.env.DEV === true
 
   useEffect(() => {
     let cancelled = false
@@ -163,6 +173,87 @@ function AdminSubmissions() {
     setActionState({ saving: false, error: '' })
   }
 
+  const handleMockAiScore = async () => {
+    if (!selectedCandidate) {
+      return
+    }
+
+    try {
+      setActionState({ saving: true, error: '' })
+
+      // This stays dev-only on the frontend. Real AI scoring must move to
+      // Firebase Cloud Functions or another backend so API keys never ship in Vite.
+      const [questions, activeRules] = await Promise.all([
+        getQuestions({
+          programId: selectedCandidate.programId,
+          programSlug: selectedCandidate.programSlug,
+        }),
+        getActiveRules({
+          programId: selectedCandidate.programId,
+          programSlug: selectedCandidate.programSlug,
+        }),
+      ])
+
+      const preparedSubmission = prepareSubmissionForScoring(selectedCandidate, questions, activeRules ?? {})
+      const mockScore = applyMockAiScore(preparedSubmission, activeRules ?? {})
+
+      await updateSubmission(selectedCandidate.id, {
+        status: mockScore.status,
+        borderline: mockScore.borderline,
+        totalScore: mockScore.totalScore,
+        aiScores: mockScore.aiScores,
+        aiSummary: mockScore.aiSummary,
+        aiRecommendation: mockScore.aiRecommendation,
+        ruleUsedSnapshot: mockScore.ruleUsedSnapshot,
+        aiRubricUsedSnapshot: mockScore.aiRubricUsedSnapshot,
+        scoredAt: mockScore.scoredAt,
+      })
+
+      setSubmissions((current) =>
+        current.map((submission) =>
+          submission.id === selectedCandidate.id
+            ? {
+                ...submission,
+                status: mockScore.status,
+                statusLabel: getCandidateStatusLabel(mockScore.status),
+                borderline: mockScore.borderline,
+                score: mockScore.totalScore,
+                scoreLabel: `${mockScore.totalScore}`,
+                aiSummary: mockScore.aiSummary,
+                aiRecommendation: mockScore.aiRecommendation,
+                aiScores: mockScore.aiScores,
+                ruleUsedSnapshot: mockScore.ruleUsedSnapshot,
+                scoredAtLabel: formatTimestamp(mockScore.scoredAt),
+              }
+            : submission,
+        ),
+      )
+
+      setSelectedCandidate((current) =>
+        current
+          ? {
+              ...current,
+              status: mockScore.status,
+              statusLabel: getCandidateStatusLabel(mockScore.status),
+              borderline: mockScore.borderline,
+              score: mockScore.totalScore,
+              scoreLabel: `${mockScore.totalScore}`,
+              aiSummary: mockScore.aiSummary,
+              aiRecommendation: mockScore.aiRecommendation,
+              aiScores: mockScore.aiScores,
+              ruleUsedSnapshot: mockScore.ruleUsedSnapshot,
+              scoredAtLabel: formatTimestamp(mockScore.scoredAt),
+            }
+          : current,
+      )
+    } catch (saveError) {
+      setActionState({ saving: false, error: `Unable to apply mock AI score. ${saveError.message}` })
+      return
+    }
+
+    setActionState({ saving: false, error: '' })
+  }
+
   if (loading) {
     return (
       <section className="panel panel--glow">
@@ -232,12 +323,20 @@ function AdminSubmissions() {
               </div>
               <div className="info-card">
                 <p>AI score</p>
-                <strong>AI score pending</strong>
-                <span>{selectedCandidate.borderline ? 'Marked borderline for manual review' : 'Awaiting AI scoring pipeline'}</span>
+                <strong>{selectedCandidate.score == null ? 'AI score pending' : `${selectedCandidate.score} total points`}</strong>
+                <span>{selectedCandidate.borderline ? 'Marked borderline for manual review' : 'Scoring outcome stored on submission'}</span>
+                <span>Scored at: {selectedCandidate.scoredAtLabel}</span>
               </div>
               <div className="info-card">
                 <p>AI feedback</p>
-                <span>AI feedback pending</span>
+                <strong>{selectedCandidate.aiRecommendation || 'AI feedback pending'}</strong>
+                <span>{selectedCandidate.aiSummary || 'Awaiting AI scoring pipeline'}</span>
+              </div>
+              <div className="info-card">
+                <p>Scoring notes</p>
+                <span>Mock scoring is local/dev only in this step.</span>
+                <span>Real AI must run in Firebase Cloud Functions or another backend only.</span>
+                <span>Frontend must never contain AI API keys or provider secrets.</span>
               </div>
               <div className="info-card">
                 <p>Answers</p>
@@ -247,6 +346,16 @@ function AdminSubmissions() {
                   </span>
                 ))}
               </div>
+              {selectedCandidate.aiScores.length ? (
+                <div className="info-card">
+                  <p>Per-question feedback</p>
+                  {selectedCandidate.aiScores.map((scoreItem) => (
+                    <span key={`${selectedCandidate.id}-score-${scoreItem.questionId}`}>
+                      Q{scoreItem.order}: {scoreItem.score}/{scoreItem.maxScore} | {scoreItem.feedback}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             {actionState.error ? <p className="error-copy">{actionState.error}</p> : null}
@@ -254,7 +363,20 @@ function AdminSubmissions() {
             <div className="button-row button-row--stack">
               <button
                 type="button"
-                className="button"
+                className="button button--ghost"
+                disabled={actionState.saving}
+                onClick={() => navigate(`/result/${selectedCandidate.id}`)}
+              >
+                View Result Page
+              </button>
+              {isDevMode ? (
+                <button type="button" className="button" disabled={actionState.saving} onClick={handleMockAiScore}>
+                  Mock AI Score
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="button button--ghost"
                 disabled={actionState.saving}
                 onClick={() => updateDecision('Approved', 'admin_approved')}
               >
