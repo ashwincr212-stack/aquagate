@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import StatCard from '../components/StatCard.jsx'
 import { getAllCandidates, getAllSubmissions, getPrograms } from '../services/firestoreService.js'
+import { getAiProviderStatus } from '../services/functionsService.js'
 
 function formatTimestamp(value) {
   if (!value) {
@@ -30,12 +31,23 @@ function getSubmittedMillis(item) {
   return 0
 }
 
+const initialProviderState = {
+  provider: 'Gemini',
+  configured: false,
+  model: 'gemini-1.5-flash',
+  realCallsEnabled: false,
+  mode: 'Backend mock only',
+  message: 'Loading AI provider status...',
+}
+
 function AdminDashboard() {
   const [candidates, setCandidates] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [programs, setPrograms] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [providerStatus, setProviderStatus] = useState(initialProviderState)
+  const [providerLoading, setProviderLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -73,6 +85,79 @@ function AdminDashboard() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadProviderStatus() {
+      try {
+        setProviderLoading(true)
+        const nextStatus = await getAiProviderStatus()
+
+        if (!cancelled) {
+          setProviderStatus({
+            provider: nextStatus?.provider || 'Gemini',
+            configured: Boolean(nextStatus?.configured),
+            model: nextStatus?.model || 'gemini-1.5-flash',
+            realCallsEnabled: Boolean(nextStatus?.realCallsEnabled),
+            mode: 'Backend mock only',
+            message: nextStatus?.configured
+              ? nextStatus?.message || 'Gemini backend status is available.'
+              : 'Gemini key is not configured yet. Backend mock scoring is still available.',
+          })
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setProviderStatus({
+            provider: 'Gemini',
+            configured: false,
+            model: 'gemini-1.5-flash',
+            realCallsEnabled: false,
+            mode: 'Backend mock only',
+            message: loadError.message,
+          })
+        }
+      } finally {
+        if (!cancelled) {
+          setProviderLoading(false)
+        }
+      }
+    }
+
+    loadProviderStatus()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const refreshProviderStatus = async () => {
+    try {
+      setProviderLoading(true)
+      const nextStatus = await getAiProviderStatus()
+      setProviderStatus({
+        provider: nextStatus?.provider || 'Gemini',
+        configured: Boolean(nextStatus?.configured),
+        model: nextStatus?.model || 'gemini-1.5-flash',
+        realCallsEnabled: Boolean(nextStatus?.realCallsEnabled),
+        mode: 'Backend mock only',
+        message: nextStatus?.configured
+          ? nextStatus?.message || 'Gemini backend status is available.'
+          : 'Gemini key is not configured yet. Backend mock scoring is still available.',
+      })
+    } catch (loadError) {
+      setProviderStatus({
+        provider: 'Gemini',
+        configured: false,
+        model: 'gemini-1.5-flash',
+        realCallsEnabled: false,
+        mode: 'Backend mock only',
+        message: loadError.message,
+      })
+    } finally {
+      setProviderLoading(false)
+    }
+  }
 
   const stats = useMemo(() => {
     const registered = candidates.filter((candidate) => candidate.status === 'registered').length
@@ -189,6 +274,41 @@ function AdminDashboard() {
         {stats.map((stat) => (
           <StatCard key={stat.label} {...stat} />
         ))}
+      </section>
+
+      <section className="panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">AI Provider Status</p>
+            <h3>Backend AI readiness</h3>
+          </div>
+          <button type="button" className="button button--ghost" onClick={refreshProviderStatus} disabled={providerLoading}>
+            {providerLoading ? 'Refreshing...' : 'Refresh AI Status'}
+          </button>
+        </div>
+        <div className="program-summary-grid">
+          <div className="info-card">
+            <p>Provider</p>
+            <strong>{providerStatus.provider}</strong>
+          </div>
+          <div className="info-card">
+            <p>Configured</p>
+            <strong>{providerStatus.configured ? 'Yes' : 'No'}</strong>
+          </div>
+          <div className="info-card">
+            <p>Model</p>
+            <strong>{providerStatus.model}</strong>
+          </div>
+          <div className="info-card">
+            <p>Real calls enabled</p>
+            <strong>{providerStatus.realCallsEnabled ? 'true' : 'false'}</strong>
+          </div>
+          <div className="info-card">
+            <p>Current mode</p>
+            <strong>{providerStatus.mode}</strong>
+          </div>
+        </div>
+        <p className={providerStatus.message.includes('unavailable') ? 'error-copy' : 'muted'}>{providerStatus.message}</p>
       </section>
 
       <section className="two-column">
