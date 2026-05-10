@@ -47,6 +47,69 @@ function formatSubmittedAt(value) {
   return 'Pending timestamp sync'
 }
 
+function getScoringSourceLabel(submission) {
+  if (submission?.backendScoringSource === 'gemini_real_local' || submission?.realAiUsed === true) {
+    return 'Gemini AI Review'
+  }
+
+  if (submission?.backendScoringSource === 'firebase_function_mock') {
+    return 'Backend Mock Review'
+  }
+
+  if (submission?.backendScoringSource === 'frontend_mock') {
+    return 'Dev Mock Review'
+  }
+
+  if (!submission?.backendScoringSource && submission?.futureProvider === 'gemini') {
+    return 'Gemini AI Review'
+  }
+
+  return 'Dev Mock Review'
+}
+
+function getAnswerMaxScore(submission, aiScoreItem, index) {
+  const directScoreMax = Number(aiScoreItem?.maxScore)
+  if (directScoreMax > 0) {
+    return directScoreMax
+  }
+
+  const matchingAnswer = Array.isArray(submission?.answers)
+    ? submission.answers.find((answer) => answer?.questionId === aiScoreItem?.questionId)
+    : null
+  const matchingAnswerMax = Number(matchingAnswer?.maxScore)
+  if (matchingAnswerMax > 0) {
+    return matchingAnswerMax
+  }
+
+  const indexedAnswerMax = Number(submission?.answers?.[index]?.maxScore)
+  if (indexedAnswerMax > 0) {
+    return indexedAnswerMax
+  }
+
+  return 10
+}
+
+function getTotalMaxScore(submission) {
+  const answerTotal = Array.isArray(submission?.answers)
+    ? submission.answers.reduce((sum, item) => sum + Number(item?.maxScore || 10), 0)
+    : 0
+
+  if (answerTotal > 0) {
+    return answerTotal
+  }
+
+  const aiScoreTotal = Array.isArray(submission?.aiScores)
+    ? submission.aiScores.reduce((sum, item) => sum + Number(item?.maxScore || 10), 0)
+    : 0
+
+  if (aiScoreTotal > 0) {
+    return aiScoreTotal
+  }
+
+  const fallbackTotal = Number(submission?.totalQuestions ?? 0) * 10
+  return fallbackTotal > 0 ? fallbackTotal : 100
+}
+
 function Result() {
   const { submissionId } = useParams()
   const [searchParams] = useSearchParams()
@@ -120,67 +183,119 @@ function Result() {
 
     return (
       <section className="result-shell panel panel--glow">
-        <div className="result-badge">{getCandidateStatusLabel(firestoreSubmission.status ?? 'pending_ai_score')}</div>
-        <h1>
-          {(firestoreSubmission.status ?? 'pending_ai_score') === 'pending_ai_score'
-            ? 'Your assessment has been submitted.'
-            : 'Your assessment has been scored.'}
-        </h1>
-        <p className="hero-copy">
-          {(firestoreSubmission.status ?? 'pending_ai_score') === 'pending_ai_score'
-            ? 'AI review is not connected yet. Current status: Pending AI score.'
-            : (resultMap[firestoreSubmission.status]?.copy ?? 'Your submission has an updated review outcome.')}
-        </p>
-
-        <div className="result-grid">
-          <div className="info-card">
-            <p>Submission ID</p>
-            <strong>{submissionId}</strong>
-          </div>
-          <div className="info-card">
-            <p>Program</p>
-            <strong>{firestoreSubmission.programTitle || firestoreSubmission.programSlug}</strong>
-          </div>
-          <div className="info-card">
-            <p>Total questions</p>
-            <strong>{firestoreSubmission.totalQuestions}</strong>
-          </div>
-          {typeof firestoreSubmission.totalScore === 'number' ? (
-            <div className="info-card">
-              <p>Total score</p>
-              <strong>{firestoreSubmission.totalScore}</strong>
-            </div>
-          ) : null}
-        </div>
-
-        <article className="panel result-note">
-          <h3>Current review state</h3>
-          <p>Status: {firestoreSubmission.status}</p>
-          <p>Submitted at: {formatSubmittedAt(firestoreSubmission.submittedAt)}</p>
-          {typeof firestoreSubmission.totalScore === 'number' ? <p>Score: {firestoreSubmission.totalScore}</p> : null}
-          {firestoreSubmission.scoredAt ? <p>Scored at: {formatSubmittedAt(firestoreSubmission.scoredAt)}</p> : null}
-        </article>
-
         {(firestoreSubmission.status ?? 'pending_ai_score') !== 'pending_ai_score' ? (
           <>
-            <article className="panel result-note">
-              <h3>AI summary</h3>
-              <p>{firestoreSubmission.aiSummary || 'Summary not available.'}</p>
-              <p>{firestoreSubmission.aiRecommendation || 'Recommendation not available.'}</p>
-            </article>
+            <section className="score-hero-card">
+              <div className="score-hero-card__head">
+                <div>
+                  <div className="result-badge">{getCandidateStatusLabel(firestoreSubmission.status ?? 'pending_ai_score')}</div>
+                  <h1>Your assessment has been scored.</h1>
+                </div>
+                <div className="score-total-pill">
+                  <span>Overall Score</span>
+                  <strong>
+                    {`${firestoreSubmission.totalScore} / ${getTotalMaxScore(firestoreSubmission)}`}
+                  </strong>
+                </div>
+              </div>
+              <p className="hero-copy">
+                {resultMap[firestoreSubmission.status]?.copy ?? 'Your submission has an updated review outcome.'}
+              </p>
+              <div className="score-meta-grid">
+                <div className="info-card">
+                  <p>Scoring source</p>
+                  <strong>{getScoringSourceLabel(firestoreSubmission)}</strong>
+                </div>
+                <div className="info-card">
+                  <p>Program</p>
+                  <strong>{firestoreSubmission.programTitle || firestoreSubmission.programSlug}</strong>
+                </div>
+                <div className="info-card">
+                  <p>Submitted at</p>
+                  <strong>{formatSubmittedAt(firestoreSubmission.submittedAt)}</strong>
+                </div>
+                <div className="info-card">
+                  <p>Scored at</p>
+                  <strong>{formatSubmittedAt(firestoreSubmission.scoredAt)}</strong>
+                </div>
+              </div>
+            </section>
+
+            <div className="result-grid result-grid--wide">
+              <article className="panel result-note">
+                <h3>AI Summary</h3>
+                <p>{firestoreSubmission.aiSummary || 'Summary not available.'}</p>
+              </article>
+
+              <article className="panel result-note">
+                <h3>Recommendation</h3>
+                <p>{firestoreSubmission.aiRecommendation || 'Recommendation not available.'}</p>
+              </article>
+            </div>
 
             {Array.isArray(firestoreSubmission.aiScores) && firestoreSubmission.aiScores.length ? (
-              <article className="panel result-note">
+              <article className="panel result-note feedback-board">
                 <h3>Per-question feedback</h3>
-                {firestoreSubmission.aiScores.map((scoreItem) => (
-                  <p key={`${firestoreSubmission.id}-feedback-${scoreItem.questionId}`}>
-                    Q{scoreItem.order}: {scoreItem.score}/{scoreItem.maxScore} | {scoreItem.feedback}
-                  </p>
-                ))}
+                <div className="feedback-card-grid">
+                  {firestoreSubmission.aiScores.map((scoreItem, index) => (
+                    <div key={`${firestoreSubmission.id}-feedback-${scoreItem.questionId}`} className="feedback-card">
+                      <div className="feedback-card__head">
+                        <span className="status-pill status-pill--soft">Question {scoreItem.order}</span>
+                        <strong>{scoreItem.score} / {getAnswerMaxScore(firestoreSubmission, scoreItem, index)}</strong>
+                      </div>
+                      <p>{scoreItem.feedback}</p>
+                      {Array.isArray(scoreItem.strengths) && scoreItem.strengths.length ? (
+                        <div className="feedback-tags">
+                          {scoreItem.strengths.map((item) => (
+                            <span key={`${scoreItem.questionId}-strength-${item}`} className="feedback-tag feedback-tag--strength">
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                      {Array.isArray(scoreItem.weaknesses) && scoreItem.weaknesses.length ? (
+                        <div className="feedback-tags">
+                          {scoreItem.weaknesses.map((item) => (
+                            <span key={`${scoreItem.questionId}-weakness-${item}`} className="feedback-tag feedback-tag--weakness">
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
               </article>
             ) : null}
           </>
-        ) : null}
+        ) : (
+          <>
+            <div className="result-badge">{getCandidateStatusLabel(firestoreSubmission.status ?? 'pending_ai_score')}</div>
+            <h1>Your assessment has been submitted.</h1>
+            <p className="hero-copy">AI review is not connected yet. Current status: Pending AI score.</p>
+
+            <div className="result-grid">
+              <div className="info-card">
+                <p>Submission ID</p>
+                <strong>{submissionId}</strong>
+              </div>
+              <div className="info-card">
+                <p>Program</p>
+                <strong>{firestoreSubmission.programTitle || firestoreSubmission.programSlug}</strong>
+              </div>
+              <div className="info-card">
+                <p>Total questions</p>
+                <strong>{firestoreSubmission.totalQuestions}</strong>
+              </div>
+            </div>
+
+            <article className="panel result-note">
+              <h3>Current review state</h3>
+              <p>Status: {getCandidateStatusLabel(firestoreSubmission.status)}</p>
+              <p>Submitted at: {formatSubmittedAt(firestoreSubmission.submittedAt)}</p>
+            </article>
+          </>
+        )}
       </section>
     )
   }

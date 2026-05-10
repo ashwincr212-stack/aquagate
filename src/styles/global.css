@@ -535,6 +535,122 @@ textarea {
   font-weight: 800;
 }
 
+.score-hero-card {
+  display: grid;
+  gap: 18px;
+  padding: 26px;
+  border-radius: 24px;
+  background:
+    linear-gradient(140deg, rgba(11, 43, 111, 0.96), rgba(17, 79, 177, 0.9)),
+    linear-gradient(180deg, rgba(201, 154, 46, 0.12), transparent);
+  box-shadow: var(--shadow-lg);
+  text-align: left;
+}
+
+.score-hero-card h1,
+.score-hero-card p,
+.score-hero-card strong,
+.score-hero-card span {
+  color: #f8fbff;
+}
+
+.score-hero-card__head,
+.feedback-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.score-total-pill {
+  min-width: 180px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  text-align: left;
+}
+
+.score-total-pill span {
+  display: block;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.score-total-pill strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.8rem;
+  letter-spacing: -0.05em;
+}
+
+.score-meta-grid,
+.feedback-card-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.score-meta-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.result-grid--wide {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.feedback-board {
+  text-align: left;
+}
+
+.feedback-card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.feedback-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(240, 246, 255, 0.95));
+  border: 1px solid var(--line);
+}
+
+.feedback-card--compact {
+  padding: 14px;
+}
+
+.feedback-card p {
+  color: var(--text-soft);
+}
+
+.feedback-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.feedback-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.feedback-tag--strength {
+  background: rgba(15, 123, 77, 0.1);
+  color: var(--success);
+}
+
+.feedback-tag--weakness {
+  background: rgba(185, 80, 55, 0.1);
+  color: var(--danger);
+}
+
 .result-grid,
 .program-summary-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -693,6 +809,9 @@ textarea {
   .two-column,
   .result-grid,
   .program-summary-grid,
+  .score-meta-grid,
+  .result-grid--wide,
+  .feedback-card-grid,
   .weight-grid,
   .toggle-grid {
     grid-template-columns: 1fr;
@@ -736,7 +855,9 @@ textarea {
   .public-footer,
   .admin-topbar,
   .section-heading,
-  .table-toolbar {
+  .table-toolbar,
+  .score-hero-card__head,
+  .feedback-card__head {
     flex-direction: column;
     align-items: flex-start;
   }

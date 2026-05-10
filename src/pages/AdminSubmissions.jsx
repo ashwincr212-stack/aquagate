@@ -22,6 +22,69 @@ function formatTimestamp(value) {
   return 'Pending timestamp sync'
 }
 
+function getScoringSourceLabel(submission) {
+  if (submission?.backendScoringSource === 'gemini_real_local' || submission?.realAiUsed === true) {
+    return 'Gemini'
+  }
+
+  if (submission?.backendScoringSource === 'firebase_function_mock') {
+    return 'Backend Mock'
+  }
+
+  if (submission?.backendScoringSource === 'frontend_mock') {
+    return 'Frontend Mock'
+  }
+
+  if (!submission?.backendScoringSource && submission?.futureProvider === 'gemini') {
+    return 'Gemini'
+  }
+
+  return 'Frontend Mock'
+}
+
+function getAnswerMaxScore(submission, aiScoreItem, index) {
+  const directScoreMax = Number(aiScoreItem?.maxScore)
+  if (directScoreMax > 0) {
+    return directScoreMax
+  }
+
+  const matchingAnswer = Array.isArray(submission?.answers)
+    ? submission.answers.find((answer) => answer?.questionId === aiScoreItem?.questionId)
+    : null
+  const matchingAnswerMax = Number(matchingAnswer?.maxScore)
+  if (matchingAnswerMax > 0) {
+    return matchingAnswerMax
+  }
+
+  const indexedAnswerMax = Number(submission?.answers?.[index]?.maxScore)
+  if (indexedAnswerMax > 0) {
+    return indexedAnswerMax
+  }
+
+  return 10
+}
+
+function getTotalMaxScore(submission) {
+  const answerTotal = Array.isArray(submission?.answers)
+    ? submission.answers.reduce((sum, item) => sum + Number(item?.maxScore || 10), 0)
+    : 0
+
+  if (answerTotal > 0) {
+    return answerTotal
+  }
+
+  const aiScoreTotal = Array.isArray(submission?.aiScores)
+    ? submission.aiScores.reduce((sum, item) => sum + Number(item?.maxScore || 10), 0)
+    : 0
+
+  if (aiScoreTotal > 0) {
+    return aiScoreTotal
+  }
+
+  const fallbackTotal = Number(submission?.totalQuestions ?? 0) * 10
+  return fallbackTotal > 0 ? fallbackTotal : 100
+}
+
 function normalizeSubmissionForAdmin(submission, candidate) {
   const status = submission.status ?? 'pending_ai_score'
 
@@ -45,6 +108,9 @@ function normalizeSubmissionForAdmin(submission, candidate) {
     aiSummary: submission.aiSummary ?? '',
     aiRecommendation: submission.aiRecommendation ?? '',
     aiScores: Array.isArray(submission.aiScores) ? submission.aiScores : [],
+    backendScoringSource: submission.backendScoringSource ?? '',
+    futureProvider: submission.futureProvider ?? '',
+    realAiUsed: Boolean(submission.realAiUsed),
     ruleUsedSnapshot: submission.ruleUsedSnapshot ?? null,
     submittedAt: submission.submittedAt ?? null,
     submittedAtLabel: formatTimestamp(submission.submittedAt),
@@ -380,12 +446,21 @@ function AdminSubmissions() {
               </div>
               <div className="info-card">
                 <p>AI score</p>
-                <strong>{selectedCandidate.score == null ? 'AI score pending' : `${selectedCandidate.score} total points`}</strong>
+                <div className="feedback-card__head">
+                  <strong>
+                    {selectedCandidate.score == null
+                      ? 'AI score pending'
+                      : `${selectedCandidate.score} / ${getTotalMaxScore(selectedCandidate)}`}
+                  </strong>
+                  {selectedCandidate.score != null ? (
+                    <span className="status-pill status-pill--soft">{getScoringSourceLabel(selectedCandidate)}</span>
+                  ) : null}
+                </div>
                 <span>{selectedCandidate.borderline ? 'Marked borderline for manual review' : 'Scoring outcome stored on submission'}</span>
                 <span>Scored at: {selectedCandidate.scoredAtLabel}</span>
               </div>
               <div className="info-card">
-                <p>AI feedback</p>
+                <p>Recommendation</p>
                 <strong>{selectedCandidate.aiRecommendation || 'AI feedback pending'}</strong>
                 <span>{selectedCandidate.aiSummary || 'Awaiting AI scoring pipeline'}</span>
               </div>
@@ -404,13 +479,37 @@ function AdminSubmissions() {
                 ))}
               </div>
               {selectedCandidate.aiScores.length ? (
-                <div className="info-card">
+                <div className="info-card feedback-board">
                   <p>Per-question feedback</p>
-                  {selectedCandidate.aiScores.map((scoreItem) => (
-                    <span key={`${selectedCandidate.id}-score-${scoreItem.questionId}`}>
-                      Q{scoreItem.order}: {scoreItem.score}/{scoreItem.maxScore} | {scoreItem.feedback}
-                    </span>
-                  ))}
+                  <div className="feedback-card-grid">
+                    {selectedCandidate.aiScores.map((scoreItem, index) => (
+                      <div key={`${selectedCandidate.id}-score-${scoreItem.questionId}`} className="feedback-card feedback-card--compact">
+                        <div className="feedback-card__head">
+                          <span className="status-pill status-pill--soft">Question {scoreItem.order}</span>
+                          <strong>{scoreItem.score} / {getAnswerMaxScore(selectedCandidate, scoreItem, index)}</strong>
+                        </div>
+                        <p>{scoreItem.feedback}</p>
+                        {Array.isArray(scoreItem.strengths) && scoreItem.strengths.length ? (
+                          <div className="feedback-tags">
+                            {scoreItem.strengths.map((item) => (
+                              <span key={`${scoreItem.questionId}-strength-${item}`} className="feedback-tag feedback-tag--strength">
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                        {Array.isArray(scoreItem.weaknesses) && scoreItem.weaknesses.length ? (
+                          <div className="feedback-tags">
+                            {scoreItem.weaknesses.map((item) => (
+                              <span key={`${scoreItem.questionId}-weakness-${item}`} className="feedback-tag feedback-tag--weakness">
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : null}
             </div>
