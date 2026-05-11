@@ -56,6 +56,8 @@ function Register() {
   const [errors, setErrors] = useState({})
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const seatsAvailable = Number(program?.seatsAvailable)
+  const isProgramClosed = Boolean(program) && (program.isActive === false || (!Number.isNaN(seatsAvailable) && seatsAvailable <= 0))
 
   const handleChange = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }))
@@ -74,6 +76,10 @@ function Register() {
   const handleSubmit = async (event) => {
     event.preventDefault()
 
+    if (isSaving) {
+      return
+    }
+
     const nextErrors = validateForm(form)
     setErrors(nextErrors)
 
@@ -81,8 +87,12 @@ function Register() {
       return
     }
 
-    if (!program.isActive) {
-      setSaveError('This enrollment is currently closed.')
+    if (isProgramClosed) {
+      setSaveError(
+        program?.isActive === false
+          ? 'This registration is not active right now.'
+          : 'This program is currently closed because seats are no longer available.',
+      )
       return
     }
 
@@ -119,7 +129,10 @@ function Register() {
     return (
       <section className="form-layout">
         <article className="panel panel--glow">
-          <p className="eyebrow">Registration</p>
+          <div className="step-banner">
+            <span className="status-pill status-pill--soft">Step 1 of 2</span>
+            <span className="eyebrow">Registration</span>
+          </div>
           <h1>Loading program...</h1>
           <p className="hero-copy">Fetching the latest enrollment details from AquaGate.</p>
         </article>
@@ -131,9 +144,13 @@ function Register() {
     return (
       <section className="form-layout">
         <article className="panel panel--glow">
-          <p className="eyebrow">Registration</p>
+          <div className="step-banner">
+            <span className="status-pill status-pill--soft">Step 1 of 2</span>
+            <span className="eyebrow">Registration</span>
+          </div>
           <h1>Program unavailable</h1>
           <p className="hero-copy">{error || 'We could not find this enrollment program.'}</p>
+          <p className="muted">Please return to the Programs page and choose an active intake.</p>
         </article>
       </section>
     )
@@ -142,23 +159,43 @@ function Register() {
   return (
     <section className="form-layout">
       <article className="panel panel--glow">
-        <p className="eyebrow">Registration</p>
-        <h1>Start your application</h1>
-        <p className="hero-copy">
-          This step uses mock submit behavior only. In later phases, the same shape can connect cleanly to Firestore,
-          OTP, and AI evaluation workflows.
-        </p>
+        <div className="step-banner">
+          <span className="status-pill status-pill--soft">Step 1 of 2</span>
+          <span className="eyebrow">Registration</span>
+        </div>
+        <h1>{program.title}</h1>
+        <p className="hero-copy">{program.description || 'Complete registration to continue to the assessment step.'}</p>
+        <div className="form-intro-grid">
+          <div className="info-card">
+            <p>Current step</p>
+            <strong>Registration</strong>
+          </div>
+          <div className="info-card">
+            <p>What happens next</p>
+            <strong>After registration, you&apos;ll answer the assessment questions.</strong>
+          </div>
+          {program.cohortLabel ? (
+            <div className="info-card">
+              <p>Cohort</p>
+              <strong>{program.cohortLabel}</strong>
+            </div>
+          ) : null}
+        </div>
         {fallbackMessage ? <p className="muted">{fallbackMessage}</p> : null}
-        {!program.isActive ? <p className="error-copy">This enrollment is currently closed.</p> : null}
+        {program.isActive === false ? <p className="error-copy">This program is inactive and not accepting registrations.</p> : null}
+        {program.isActive !== false && !Number.isNaN(seatsAvailable) && seatsAvailable <= 0 ? (
+          <p className="error-copy">This program is currently closed because all seats have been filled.</p>
+        ) : null}
       </article>
 
       <form className="panel form-card" onSubmit={handleSubmit}>
         <div className="section-heading">
           <div>
             <p className="eyebrow">Candidate details</p>
-            <h2>{program.title}</h2>
+            <h2>Complete your registration</h2>
+            <p className="muted">Use the same contact details you want AquaGate to use for updates.</p>
           </div>
-          <span className="status-pill">{isSaving ? 'Saving to Firestore' : 'Candidate registration'}</span>
+          <span className="status-pill">{isSaving ? 'Saving to Firestore' : isProgramClosed ? 'Closed' : 'Candidate registration'}</span>
         </div>
 
         <div className="form-grid">
@@ -214,7 +251,7 @@ function Register() {
         {saveError ? <p className="error-copy">{saveError}</p> : null}
 
         <div className="button-row">
-          <button type="submit" className="button" disabled={isSaving || !program.isActive}>
+          <button type="submit" className="button" disabled={isSaving || isProgramClosed}>
             {isSaving ? 'Saving and continuing...' : 'Save and Continue'}
           </button>
         </div>

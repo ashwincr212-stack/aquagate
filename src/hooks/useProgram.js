@@ -11,6 +11,9 @@ function normalizeProgram(program, fallbackSlug) {
     return null
   }
 
+  const seatsAvailable =
+    program.seatsAvailable ?? program.seats ?? program.availableSeats ?? program.capacity ?? null
+
   return {
     id: program.id ?? program.programId ?? program.slug ?? fallbackSlug,
     title: program.title ?? program.name ?? 'Untitled Program',
@@ -31,7 +34,9 @@ function normalizeProgram(program, fallbackSlug) {
     highlights: program.highlights ?? [],
     eligibility: program.eligibility ?? [],
     timeline: program.timeline ?? [],
-    seats: program.seats ?? 0,
+    seatsAvailable,
+    seats: seatsAvailable,
+    cohortLabel: program.cohortLabel ?? '',
   }
 }
 

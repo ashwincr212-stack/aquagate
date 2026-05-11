@@ -16,7 +16,7 @@ function validateAnswers(questions, answers) {
     }
 
     if (answerText.length < 20) {
-      nextErrors[question.id] = 'Each answer must be at least 20 characters.'
+      nextErrors[question.id] = 'Please answer all questions with at least 20 characters.'
     }
   })
 
@@ -88,11 +88,15 @@ function Assessment() {
   const handleSubmit = async (event) => {
     event.preventDefault()
 
+    if (isSubmitting) {
+      return
+    }
+
     const nextErrors = validateAnswers(questions, answers)
     setAnswerErrors(nextErrors)
 
     if (Object.keys(nextErrors).length > 0) {
-      setSubmitError('Please complete all answers with at least 20 characters before submitting.')
+      setSubmitError('Please answer all questions with at least 20 characters.')
       return
     }
 
@@ -149,7 +153,10 @@ function Assessment() {
   if (loading) {
     return (
       <section className="panel panel--glow">
-        <p className="eyebrow">Assessment</p>
+        <div className="step-banner">
+          <span className="status-pill status-pill--soft">Step 2 of 2</span>
+          <span className="eyebrow">Assessment</span>
+        </div>
         <h1>Loading assessment...</h1>
         <p className="hero-copy">Fetching the latest program details and question set from AquaGate.</p>
       </section>
@@ -159,7 +166,10 @@ function Assessment() {
   if (error || !program || questions.length === 0) {
     return (
       <section className="panel panel--glow">
-        <p className="eyebrow">Assessment</p>
+        <div className="step-banner">
+          <span className="status-pill status-pill--soft">Step 2 of 2</span>
+          <span className="eyebrow">Assessment</span>
+        </div>
         <h1>Assessment unavailable</h1>
         <p className="hero-copy">{error || 'This assessment is not ready yet for the selected program.'}</p>
       </section>
@@ -169,7 +179,10 @@ function Assessment() {
   if (!candidateId && !isAdminPreview) {
     return (
       <section className="panel panel--glow">
-        <p className="eyebrow">Assessment</p>
+        <div className="step-banner">
+          <span className="status-pill status-pill--soft">Step 2 of 2</span>
+          <span className="eyebrow">Assessment</span>
+        </div>
         <h1>Registration required</h1>
         <p className="hero-copy">Please complete registration before starting the assessment.</p>
         <div className="button-row">
@@ -186,18 +199,20 @@ function Assessment() {
       <section className="panel panel--glow">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Assessment</p>
+            <div className="step-banner">
+              <span className="status-pill status-pill--soft">Step 2 of 2</span>
+              <span className="eyebrow">Assessment</span>
+            </div>
             <h1>{program.title}</h1>
+            <p className="muted">Answer every question carefully. The admin team will review your assessment after submission.</p>
           </div>
-          <span className="status-pill">{progress}% complete</span>
+          <span className="status-pill">{answeredCount} / {questions.length} answered</span>
         </div>
 
         <div className="progress-bar" aria-hidden="true">
           <span style={{ width: `${progress}%` }} />
         </div>
-        <p className="muted">
-          {questions.length} Firestore-backed questions loaded. Answers stay in local state only for this step.
-        </p>
+        <p className="muted">{questions.length} questions loaded for this program. Each answer should be at least 20 characters.</p>
         {fallbackMessage ? <p className="muted">{fallbackMessage}</p> : null}
         {isAdminPreview ? <p className="status-pill">Admin preview mode - answers will not be submitted.</p> : null}
         {submitError ? <p className="error-copy">{submitError}</p> : null}
@@ -213,8 +228,12 @@ function Assessment() {
               </div>
               <span className="status-pill status-pill--soft">{question.maxScore} marks</span>
             </div>
+            <div className="question-meta-row">
+              <p className="muted">Answer clearly and keep examples specific when possible.</p>
+              <span className="character-count">{(answers[question.id] ?? '').trim().length} characters</span>
+            </div>
             <textarea
-              rows="5"
+              rows="4"
               placeholder="Write your answer here..."
               value={answers[question.id] ?? ''}
               onChange={(event) => handleAnswerChange(question.id, event.target.value)}
@@ -226,7 +245,7 @@ function Assessment() {
 
       <section className="panel">
         <div className="button-row">
-          <button type="button" className="button button--ghost" onClick={handleSaveDraft}>
+          <button type="button" className="button button--ghost" onClick={handleSaveDraft} disabled={isSubmitting}>
             Save Draft
           </button>
           {isAdminPreview ? (
@@ -235,7 +254,7 @@ function Assessment() {
             </button>
           ) : (
             <button type="submit" className="button" disabled={isSubmitting}>
-              {isSubmitting ? 'Submitting assessment...' : 'Submit Assessment'}
+              {isSubmitting ? 'Submitting your assessment...' : 'Submit Assessment'}
             </button>
           )}
         </div>

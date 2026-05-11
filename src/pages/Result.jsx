@@ -150,7 +150,7 @@ function getResultHeroContent(status) {
   if (status === 'pending_ai_score') {
     return {
       title: 'Your assessment has been submitted.',
-      subtitle: 'AI review is not connected yet or is still pending.',
+      subtitle: 'The admin team will review your submission. AI scoring may run before the final decision.',
     }
   }
 

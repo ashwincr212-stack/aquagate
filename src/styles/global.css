@@ -289,6 +289,13 @@ p {
   font-size: 1.05rem;
 }
 
+.step-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.22em;
@@ -471,6 +478,12 @@ textarea:focus {
   gap: 24px;
 }
 
+.form-intro-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .form-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -495,7 +508,7 @@ textarea:focus {
 }
 
 .question-answer-card textarea {
-  min-height: 150px;
+  min-height: 132px;
 }
 
 textarea {
@@ -514,6 +527,27 @@ textarea {
 
 .error-copy {
   color: var(--danger);
+  font-weight: 700;
+}
+
+.question-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.character-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(231, 238, 252, 0.8);
+  border: 1px solid var(--line);
+  color: var(--primary-deep);
+  font-size: 0.82rem;
   font-weight: 700;
 }
 
@@ -838,6 +872,7 @@ textarea {
   .score-meta-grid,
   .result-grid--wide,
   .feedback-card-grid,
+  .form-intro-grid,
   .weight-grid,
   .toggle-grid {
     grid-template-columns: 1fr;
@@ -882,6 +917,7 @@ textarea {
   .admin-topbar,
   .section-heading,
   .table-toolbar,
+  .question-meta-row,
   .score-hero-card__head,
   .feedback-card__head {
     flex-direction: column;
