@@ -10,6 +10,7 @@ import AdminSubmissions from './pages/AdminSubmissions.jsx'
 import Assessment from './pages/Assessment.jsx'
 import Enroll from './pages/Enroll.jsx'
 import Landing from './pages/Landing.jsx'
+import Programs from './pages/Programs.jsx'
 import Register from './pages/Register.jsx'
 import Result from './pages/Result.jsx'
 
@@ -19,6 +20,7 @@ function App() {
       <Routes>
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Landing />} />
+          <Route path="/programs" element={<Programs />} />
           <Route path="/enroll/:programSlug" element={<Enroll />} />
           <Route path="/register/:programSlug" element={<Register />} />
           <Route path="/assessment/:programSlug" element={<Assessment />} />

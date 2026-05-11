@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
-import ProgramCard from '../components/ProgramCard.jsx'
-import { landingSteps, programs } from '../data/mockData.js'
+import { landingSteps } from '../data/mockData.js'
 
 const DEMO_PROGRAM_SLUG = 'demo-course'
 
@@ -17,8 +16,8 @@ function Landing() {
             only for shortlisted candidates.
           </p>
           <div className="button-row">
-            <Link to={`/enroll/${DEMO_PROGRAM_SLUG}`} className="button">
-              View Demo Program
+            <Link to="/programs" className="button">
+              View Programs
             </Link>
             <Link to="/admin/dashboard" className="button button--ghost">
               Explore Admin Portal
@@ -55,19 +54,19 @@ function Landing() {
         </div>
       </section>
 
-      <section id="programs" className="stack-md">
+      <section id="programs" className="panel">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Mock partner programs</p>
-            <h2>One frontend shell, many enrollment gateways.</h2>
+            <p className="eyebrow">Active program directory</p>
+            <h2>One frontend shell, many real enrollment gateways.</h2>
           </div>
+          <Link to="/programs" className="button">
+            Browse Programs
+          </Link>
         </div>
-
-        <div className="program-grid">
-          {programs.map((program) => (
-            <ProgramCard key={program.id} program={program} />
-          ))}
-        </div>
+        <p className="hero-copy">
+          Explore real active Firestore-backed programs, then register directly through the matching AquaGate route.
+        </p>
       </section>
     </div>
   )

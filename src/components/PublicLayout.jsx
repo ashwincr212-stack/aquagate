@@ -14,8 +14,7 @@ function PublicLayout() {
 
         <nav className="public-nav">
           <NavLink to="/">Overview</NavLink>
-          <a href="#how-it-works">How it works</a>
-          <a href="#programs">Programs</a>
+          <NavLink to="/programs">Programs</NavLink>
           <Link to="/admin/login" className="button button--ghost">
             Admin Portal
           </Link>
