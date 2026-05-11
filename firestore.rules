@@ -43,12 +43,14 @@ service cloud.firestore {
 
     match /candidates/{candidateId} {
       allow create: if true;
-      allow read, update, delete: if isAdmin();
+      allow update: if true;
+      allow read, delete: if isAdmin();
     }
 
     match /submissions/{submissionId} {
       allow create: if true;
-      allow read, update, delete: if isAdmin();
+      allow read: if true;
+      allow update, delete: if isAdmin();
     }
 
     match /{document=**} {
