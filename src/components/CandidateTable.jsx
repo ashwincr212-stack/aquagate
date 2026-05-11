@@ -17,7 +17,7 @@ function CandidateTable({ submissions, activeFilter, onFilterChange, onSelectCan
           <p className="eyebrow">Submission pipeline</p>
           <h3>Candidate review queue</h3>
         </div>
-        <div className="filter-row">
+        <div className="filter-row filter-row--compact">
           {filters.map((filter) => (
             <button
               key={filter.value}
@@ -57,11 +57,17 @@ function CandidateTable({ submissions, activeFilter, onFilterChange, onSelectCan
                 <td>{submission.email}</td>
                 <td>{submission.phone}</td>
                 <td>{submission.programTitle}</td>
-                <td>{submission.statusLabel}</td>
+                <td>
+                  <span className="status-pill status-pill--soft">{submission.statusLabel}</span>
+                </td>
                 <td>{submission.scoreLabel}</td>
-                <td>{submission.borderline ? 'Yes' : 'No'}</td>
+                <td>
+                  <span className={`status-pill ${submission.borderline ? '' : 'status-pill--soft'}`}>
+                    {submission.borderline ? 'Yes' : 'No'}
+                  </span>
+                </td>
                 <td>{submission.submittedAtLabel}</td>
-                <td>{submission.adminDecision}</td>
+                <td>{submission.adminDecisionLabel}</td>
               </tr>
             ))}
           </tbody>

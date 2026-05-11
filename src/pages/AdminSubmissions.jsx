@@ -85,8 +85,23 @@ function getTotalMaxScore(submission) {
   return fallbackTotal > 0 ? fallbackTotal : 100
 }
 
+function getAdminDecisionLabel(adminDecision) {
+  if (!adminDecision || adminDecision === 'Pending') {
+    return 'Pending'
+  }
+
+  return adminDecision
+}
+
 function normalizeSubmissionForAdmin(submission, candidate) {
   const status = submission.status ?? 'pending_ai_score'
+  const totalMaxScore = getTotalMaxScore(submission)
+  const scoreLabel =
+    submission.totalScore == null
+      ? 'Pending'
+      : totalMaxScore > 0
+        ? `${submission.totalScore} / ${totalMaxScore}`
+        : `${submission.totalScore}`
 
   return {
     id: submission.id,
@@ -103,7 +118,8 @@ function normalizeSubmissionForAdmin(submission, candidate) {
     status,
     statusLabel: getCandidateStatusLabel(status),
     score: submission.totalScore,
-    scoreLabel: submission.totalScore == null ? 'Pending' : `${submission.totalScore}`,
+    scoreLabel,
+    totalMaxScore,
     borderline: Boolean(submission.borderline),
     aiSummary: submission.aiSummary ?? '',
     aiRecommendation: submission.aiRecommendation ?? '',
@@ -111,12 +127,17 @@ function normalizeSubmissionForAdmin(submission, candidate) {
     backendScoringSource: submission.backendScoringSource ?? '',
     futureProvider: submission.futureProvider ?? '',
     realAiUsed: Boolean(submission.realAiUsed),
+    sourceLabel:
+      submission.totalScore == null && !(Array.isArray(submission.aiScores) && submission.aiScores.length)
+        ? ''
+        : getScoringSourceLabel(submission),
     ruleUsedSnapshot: submission.ruleUsedSnapshot ?? null,
     submittedAt: submission.submittedAt ?? null,
     submittedAtLabel: formatTimestamp(submission.submittedAt),
     scoredAtLabel: formatTimestamp(submission.scoredAt),
     emailSent: Boolean(submission.emailSent),
     adminDecision: submission.adminDecision ?? 'Pending',
+    adminDecisionLabel: getAdminDecisionLabel(submission.adminDecision),
     adminDecisionNote: submission.adminDecisionNote ?? '',
     adminNotes: submission.adminNotes ?? '',
     totalQuestions: submission.totalQuestions ?? submission.answers?.length ?? 0,
@@ -249,6 +270,7 @@ function AdminSubmissions() {
             ? {
                 ...submission,
                 adminDecision,
+                adminDecisionLabel: getAdminDecisionLabel(adminDecision),
                 adminDecisionNote: adminDecisionNote.trim(),
                 status,
                 statusLabel: getCandidateStatusLabel(status),
@@ -262,6 +284,7 @@ function AdminSubmissions() {
           ? {
               ...current,
               adminDecision,
+              adminDecisionLabel: getAdminDecisionLabel(adminDecision),
               adminDecisionNote: adminDecisionNote.trim(),
               status,
               statusLabel: getCandidateStatusLabel(status),
@@ -322,10 +345,11 @@ function AdminSubmissions() {
                 statusLabel: getCandidateStatusLabel(mockScore.status),
                 borderline: mockScore.borderline,
                 score: mockScore.totalScore,
-                scoreLabel: `${mockScore.totalScore}`,
+                scoreLabel: `${mockScore.totalScore} / ${getTotalMaxScore(submission)}`,
                 aiSummary: mockScore.aiSummary,
                 aiRecommendation: mockScore.aiRecommendation,
                 aiScores: mockScore.aiScores,
+                sourceLabel: 'Frontend Mock',
                 ruleUsedSnapshot: mockScore.ruleUsedSnapshot,
                 scoredAtLabel: formatTimestamp(mockScore.scoredAt),
               }
@@ -341,10 +365,11 @@ function AdminSubmissions() {
               statusLabel: getCandidateStatusLabel(mockScore.status),
               borderline: mockScore.borderline,
               score: mockScore.totalScore,
-              scoreLabel: `${mockScore.totalScore}`,
+              scoreLabel: `${mockScore.totalScore} / ${getTotalMaxScore(current)}`,
               aiSummary: mockScore.aiSummary,
               aiRecommendation: mockScore.aiRecommendation,
               aiScores: mockScore.aiScores,
+              sourceLabel: 'Frontend Mock',
               ruleUsedSnapshot: mockScore.ruleUsedSnapshot,
               scoredAtLabel: formatTimestamp(mockScore.scoredAt),
             }
@@ -442,17 +467,57 @@ function AdminSubmissions() {
       <aside className="panel detail-panel">
         {selectedCandidate ? (
           <>
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">Candidate detail</p>
-                <h3>{selectedCandidate.name}</h3>
+            <section className="detail-summary-card">
+              <div className="detail-summary-card__top">
+                <div>
+                  <p className="eyebrow">Candidate detail</p>
+                  <h3>{selectedCandidate.name}</h3>
+                </div>
+                <div className="detail-summary-card__meta">
+                  <span className="status-pill">{selectedCandidate.statusLabel}</span>
+                  {selectedCandidate.sourceLabel ? (
+                    <span className="status-pill status-pill--soft">{selectedCandidate.sourceLabel}</span>
+                  ) : null}
+                </div>
               </div>
-              <span className="status-pill">{selectedCandidate.statusLabel}</span>
-            </div>
+              <div className="detail-summary-card__grid">
+                <div className="info-card">
+                  <p>Score</p>
+                  <strong>{selectedCandidate.scoreLabel}</strong>
+                </div>
+                <div className="info-card">
+                  <p>Submitted</p>
+                  <strong>{selectedCandidate.submittedAtLabel}</strong>
+                </div>
+              </div>
+              <div className="button-row">
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  disabled={actionState.saving}
+                  onClick={() => navigate(`/result/${selectedCandidate.id}`)}
+                >
+                  View Result Page
+                </button>
+                {isDevMode ? (
+                  <>
+                    <button type="button" className="button" disabled={actionState.saving} onClick={handleGeminiScore}>
+                      Gemini Score
+                    </button>
+                    <button type="button" className="button" disabled={actionState.saving} onClick={handleBackendMockScore}>
+                      Backend Mock Score
+                    </button>
+                    <button type="button" className="button button--ghost" disabled={actionState.saving} onClick={handleMockAiScore}>
+                      Mock AI Score
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            </section>
 
             <div className="detail-stack">
               <div className="info-card">
-                <p>Profile</p>
+                <p>Candidate Profile</p>
                 <strong>{selectedCandidate.email}</strong>
                 <span>{selectedCandidate.phone}</span>
                 <span>{selectedCandidate.city}</span>
@@ -460,49 +525,34 @@ function AdminSubmissions() {
                 <span>{selectedCandidate.experience}</span>
               </div>
               <div className="info-card">
-                <p>Submission</p>
+                <p>Submission Info</p>
                 <strong>{selectedCandidate.programTitle}</strong>
                 <span>Status: {selectedCandidate.statusLabel}</span>
                 <span>Total questions: {selectedCandidate.totalQuestions}</span>
                 <span>Submitted at: {selectedCandidate.submittedAtLabel}</span>
               </div>
               <div className="info-card">
-                <p>AI score</p>
-                <div className="feedback-card__head">
-                  <strong>
-                    {selectedCandidate.score == null
-                      ? 'AI score pending'
-                      : `${selectedCandidate.score} / ${getTotalMaxScore(selectedCandidate)}`}
-                  </strong>
-                  {selectedCandidate.score != null ? (
-                    <span className="status-pill status-pill--soft">{getScoringSourceLabel(selectedCandidate)}</span>
-                  ) : null}
-                </div>
+                <p>AI Score Summary</p>
+                <strong>{selectedCandidate.score == null ? 'AI score pending' : selectedCandidate.scoreLabel}</strong>
                 <span>{selectedCandidate.borderline ? 'Marked borderline for manual review' : 'Scoring outcome stored on submission'}</span>
                 <span>Scored at: {selectedCandidate.scoredAtLabel}</span>
               </div>
               <div className="info-card">
-                <p>Recommendation</p>
+                <p>AI Recommendation</p>
                 <strong>{selectedCandidate.aiRecommendation || 'AI feedback pending'}</strong>
                 <span>{selectedCandidate.aiSummary || 'Awaiting AI scoring pipeline'}</span>
-              </div>
-              <div className="info-card">
-                <p>Scoring notes</p>
-                <span>Mock scoring is local/dev only in this step.</span>
-                <span>Real AI must run in Firebase Cloud Functions or another backend only.</span>
-                <span>Frontend must never contain AI API keys or provider secrets.</span>
               </div>
               <div className="info-card">
                 <p>Answers</p>
                 {selectedCandidate.answers.map((answer) => (
                   <span key={`${selectedCandidate.id}-${answer.questionId}`}>
-                    Q{answer.order}: {answer.questionText} | Answer: {answer.answerText} | Max score: {answer.maxScore}
+                    Q{answer.order}: {answer.answerText}
                   </span>
                 ))}
               </div>
               {selectedCandidate.aiScores.length ? (
                 <div className="info-card feedback-board">
-                  <p>Per-question feedback</p>
+                  <p>Per-question Feedback</p>
                   <div className="feedback-card-grid">
                     {selectedCandidate.aiScores.map((scoreItem, index) => (
                       <div key={`${selectedCandidate.id}-score-${scoreItem.questionId}`} className="feedback-card feedback-card--compact">
@@ -539,71 +589,58 @@ function AdminSubmissions() {
             {actionState.error ? <p className="error-copy">{actionState.error}</p> : null}
             {actionState.message ? <p className="success-copy">{actionState.message}</p> : null}
 
-            <label className="field">
-              <span>Admin decision note</span>
-              <textarea
-                rows="3"
-                placeholder="Optional context for the final decision..."
-                value={adminDecisionNote}
-                onChange={(event) => setAdminDecisionNote(event.target.value)}
-              />
-            </label>
+            <section className="panel admin-decision-panel">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Admin Decision</p>
+                  <h3>{selectedCandidate.adminDecisionLabel}</h3>
+                </div>
+              </div>
+              <label className="field">
+                <span>Admin decision note</span>
+                <textarea
+                  rows="3"
+                  placeholder="Optional context for the final decision..."
+                  value={adminDecisionNote}
+                  onChange={(event) => setAdminDecisionNote(event.target.value)}
+                />
+              </label>
 
-            <div className="button-row button-row--stack">
-              <button
-                type="button"
-                className="button button--ghost"
-                disabled={actionState.saving}
-                onClick={() => navigate(`/result/${selectedCandidate.id}`)}
-              >
-                View Result Page
-              </button>
-              {isDevMode ? (
-                <>
-                  <button type="button" className="button" disabled={actionState.saving} onClick={handleBackendMockScore}>
-                    Backend Mock Score
-                  </button>
-                  <button type="button" className="button" disabled={actionState.saving} onClick={handleGeminiScore}>
-                    Gemini Score
-                  </button>
-                  <button type="button" className="button button--ghost" disabled={actionState.saving} onClick={handleMockAiScore}>
-                    Mock AI Score
-                  </button>
-                </>
-              ) : null}
-              <button
-                type="button"
-                className="button button--ghost"
-                disabled={actionState.saving}
-                onClick={() => updateDecision('Approved', 'admin_approved')}
-              >
-                Approve
-              </button>
-              <button
-                type="button"
-                className="button button--ghost"
-                disabled={actionState.saving}
-                onClick={() => updateDecision('Waitlisted', 'waitlisted')}
-              >
-                Move to waitlist
-              </button>
-              <button
-                type="button"
-                className="button button--ghost"
-                disabled={actionState.saving}
-                onClick={() => updateDecision('Borderline Review', 'borderline_review')}
-              >
-                Mark borderline
-              </button>
-              <button
-                type="button"
-                className="button button--ghost button--danger"
-                disabled={actionState.saving}
-                onClick={() => updateDecision('Rejected', 'admin_rejected')}
-              >
-                Reject
-              </button>
-            </div>
+              <div className="button-row button-row--stack">
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  disabled={actionState.saving}
+                  onClick={() => updateDecision('Approved', 'admin_approved')}
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  disabled={actionState.saving}
+                  onClick={() => updateDecision('Waitlisted', 'waitlisted')}
+                >
+                  Move to waitlist
+                </button>
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  disabled={actionState.saving}
+                  onClick={() => updateDecision('Borderline Review', 'borderline_review')}
+                >
+                  Mark borderline
+                </button>
+                <button
+                  type="button"
+                  className="button button--ghost button--danger"
+                  disabled={actionState.saving}
+                  onClick={() => updateDecision('Rejected', 'admin_rejected')}
+                >
+                  Reject
+                </button>
+              </div>
+            </section>
           </>
         ) : (
           <div className="detail-stack">
