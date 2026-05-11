@@ -60,6 +60,7 @@ function AdminLayout() {
               <small>{user?.email || 'Signed in with Firebase Auth'}</small>
             </div>
             {adminProfile?.source === 'dev_email_fallback' ? <span className="status-pill">DEV admin fallback active</span> : null}
+            {adminProfile?.source === 'firestore_admin_doc' ? <span className="status-pill status-pill--soft">Admin verified</span> : null}
             <button type="button" className="button button--ghost" onClick={handleSignOut}>
               Sign Out
             </button>

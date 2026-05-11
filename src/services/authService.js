@@ -102,7 +102,11 @@ function evaluateAdminProfile(snapshot, uid, user) {
     }
   }
 
-  const adminProfile = { id: snapshot.id, ...snapshot.data() }
+  const adminProfile = {
+    id: snapshot.id,
+    ...snapshot.data(),
+    source: 'firestore_admin_doc',
+  }
 
   if (adminProfile.role !== 'admin') {
     return {
