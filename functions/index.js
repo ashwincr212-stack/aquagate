@@ -1,5 +1,6 @@
 const admin = require('firebase-admin')
 const { onCall, HttpsError } = require('firebase-functions/v2/https')
+const { defineSecret } = require('firebase-functions/params')
 
 const {
   getSubmission,
@@ -17,6 +18,8 @@ const { calculateTotalScore, evaluateRules } = require('./services/rulesEngine')
 if (!admin.apps.length) {
   admin.initializeApp()
 }
+
+const geminiApiKeySecret = defineSecret('GEMINI_API_KEY')
 
 // Future provider: Gemini API.
 // Gemini API keys must stay backend-only through Firebase secrets or secure
@@ -77,8 +80,10 @@ exports.scoreSubmission = onCall(async (request) => {
   }
 })
 
-exports.getAiProviderStatus = onCall(async () => {
-  const providerStatus = getGeminiProviderStatus()
+exports.getAiProviderStatus = onCall({ secrets: [geminiApiKeySecret] }, async () => {
+  const providerStatus = getGeminiProviderStatus({
+    apiKey: geminiApiKeySecret.value(),
+  })
 
   return {
     provider: providerStatus.provider,
@@ -87,12 +92,12 @@ exports.getAiProviderStatus = onCall(async () => {
     realCallsEnabled: providerStatus.realCallsEnabled,
     mode: providerStatus.mode,
     message: providerStatus.configured
-      ? 'Gemini backend is configured for local emulator testing.'
-      : 'Gemini backend configuration is not set yet. Add the key later in functions/.env or Firebase secrets.',
+      ? 'Gemini backend is configured for deployment or local emulator testing.'
+      : 'Gemini backend configuration is not set yet. Add the key in Firebase Functions secrets or functions/.env.',
   }
 })
 
-exports.scoreSubmissionWithGemini = onCall(async (request) => {
+exports.scoreSubmissionWithGemini = onCall({ secrets: [geminiApiKeySecret] }, async (request) => {
   const submissionId = request.data?.submissionId
 
   if (!submissionId || typeof submissionId !== 'string') {
@@ -118,7 +123,9 @@ exports.scoreSubmissionWithGemini = onCall(async (request) => {
       questions,
       rules,
     })
-    const geminiScore = await scoreWithGemini(scoringPayload)
+    const geminiScore = await scoreWithGemini(scoringPayload, {
+      apiKey: geminiApiKeySecret.value(),
+    })
     const totalScore = calculateTotalScore(geminiScore.aiScores)
     const evaluation = evaluateRules(totalScore, geminiScore.aiScores, rules)
 

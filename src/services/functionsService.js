@@ -23,7 +23,11 @@ function getFriendlyFunctionError(error) {
   }
 
   if (message.includes('Gemini API key is not configured in functions/.env')) {
-    return 'Gemini key is not configured in functions/.env'
+    return 'Gemini key is not configured in Firebase Functions secrets or functions/.env'
+  }
+
+  if (message.includes('Gemini API key is not configured in Firebase Functions secrets or functions/.env')) {
+    return 'Gemini key is not configured in Firebase Functions secrets or functions/.env'
   }
 
   return `Unable to score submission with backend mock. ${message || 'Unknown backend function error.'}`
@@ -77,8 +81,11 @@ export async function scoreSubmissionWithGemini(submissionId) {
       throw new Error('Functions emulator is not running. Start it with npm run functions:serve.')
     }
 
-    if (message.includes('Gemini API key is not configured in functions/.env')) {
-      throw new Error('Gemini key is not configured in functions/.env')
+    if (
+      message.includes('Gemini API key is not configured in functions/.env') ||
+      message.includes('Gemini API key is not configured in Firebase Functions secrets or functions/.env')
+    ) {
+      throw new Error('Gemini key is not configured in Firebase Functions secrets or functions/.env')
     }
 
     if (message.includes('Gemini response')) {

@@ -20,8 +20,9 @@ Gemini placeholders can be prepared locally, but no real Gemini call should happ
 ## Security Rules
 
 - API keys must be stored backend-only using Firebase secrets or secure backend environment variables.
-- Use Firebase Secret Manager or secure backend env later for Gemini.
-- Do not put Gemini keys in root `.env`, `functions/.env`, or Vite env files.
+- Use Firebase Secret Manager for deployed Gemini access.
+- `functions/.env` is acceptable for local emulator testing only.
+- Do not put Gemini keys in root `.env` or Vite env files.
 - Frontend must never contain Gemini, OpenAI, or Claude API keys.
 - Browser code must never call the AI provider directly.
 
@@ -51,14 +52,33 @@ Gemini placeholders can be prepared locally, but no real Gemini call should happ
 
 When Gemini is ready to be configured locally:
 - Copy `functions/.env.example` to `functions/.env`
-- Add `GEMINI_API_KEY` only inside `functions/.env`
+- Add `GEMINI_API_KEY_LOCAL` only inside `functions/.env`
 - Never add the Gemini key to root `.env`
 - Never prefix the Gemini key with `VITE_`
 - Never place the Gemini key anywhere inside `src/`
-- For production, move the secret to Firebase secrets before deployment
+- For production, store the key as Firebase Functions secret `GEMINI_API_KEY` before deployment
 
 This step only checks configuration readiness.
 Real Gemini calls remain disabled until you add a backend-only key locally.
+
+## Production Deployment Readiness
+
+- Vercel frontend should never receive the Gemini API key.
+- In local development, the frontend uses the Functions emulator because `src/firebase.js` connects the Functions client to `127.0.0.1:5001` only in `import.meta.env.DEV`.
+- In production, the same callable frontend code automatically talks to deployed Firebase Functions.
+- `scoreSubmissionWithGemini` and `getAiProviderStatus` now support Firebase Functions secret `GEMINI_API_KEY` in production and fall back to `functions/.env` key `GEMINI_API_KEY_LOCAL` locally.
+
+Set the deployed Gemini secret with Firebase CLI:
+
+```bash
+firebase functions:secrets:set GEMINI_API_KEY
+```
+
+Optional local/deployed model override stays in backend env only:
+
+```bash
+GEMINI_MODEL=gemini-1.5-flash
+```
 
 ## Next Safe Step
 
@@ -94,7 +114,7 @@ Notes:
 A) Create `functions/.env` manually:
 
 ```bash
-GEMINI_API_KEY=your_key_here
+GEMINI_API_KEY_LOCAL=your_key_here
 GEMINI_MODEL=gemini-1.5-flash
 ```
 

@@ -128,24 +128,24 @@ function validateGeminiScoreResponse(parsedResponse, scoringPayload = {}) {
   return parsedResponse
 }
 
-function getGeminiProviderStatus() {
-  const { hasApiKey, model, provider } = getGeminiConfig()
+function getGeminiProviderStatus(options = {}) {
+  const { hasApiKey, model, provider } = getGeminiConfig({ apiKey: options.apiKey })
 
   return {
     provider,
     configured: hasApiKey,
     model,
     realCallsEnabled: hasApiKey,
-    mode: hasApiKey ? 'Gemini backend available locally' : 'Backend mock only',
+    mode: hasApiKey ? 'Gemini backend available' : 'Backend mock only',
   }
 }
 
-async function scoreWithGemini(scoringPayload = {}) {
-  const apiKey = getGeminiApiKey()
-  const { model } = getGeminiConfig()
+async function scoreWithGemini(scoringPayload = {}, options = {}) {
+  const apiKey = getGeminiApiKey({ apiKey: options.apiKey })
+  const { model } = getGeminiConfig({ apiKey: options.apiKey })
 
   if (!apiKey) {
-    throw new Error('Gemini API key is not configured in functions/.env')
+    throw new Error('Gemini API key is not configured in Firebase Functions secrets or functions/.env')
   }
 
   const prompt = buildGeminiPrompt(scoringPayload)
