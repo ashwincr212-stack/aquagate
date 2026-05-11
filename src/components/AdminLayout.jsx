@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useAdminAuth } from '../context/AdminAuthContext.jsx'
 
 const adminLinks = [
   { to: '/admin/dashboard', label: 'Dashboard' },
@@ -10,9 +11,14 @@ const adminLinks = [
 ]
 
 function AdminLayout() {
+  const { user, adminProfile, logout } = useAdminAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
   const current = adminLinks.find((link) => location.pathname.startsWith(link.to))?.label ?? 'Admin'
+
+  const handleSignOut = async () => {
+    await logout()
+  }
 
   return (
     <div className="admin-shell">
@@ -49,8 +55,14 @@ function AdminLayout() {
             <h1>{current}</h1>
           </div>
           <div className="admin-topbar__status">
-            <span className="status-pill">Mock Mode</span>
-            <span className="status-pill status-pill--soft">Criteria v2.4</span>
+            <div className="admin-identity">
+              <strong>{adminProfile?.displayName || user?.displayName || user?.email || 'Admin user'}</strong>
+              <small>{user?.email || 'Signed in with Firebase Auth'}</small>
+            </div>
+            {adminProfile?.source === 'dev_email_fallback' ? <span className="status-pill">DEV admin fallback active</span> : null}
+            <button type="button" className="button button--ghost" onClick={handleSignOut}>
+              Sign Out
+            </button>
           </div>
         </header>
 
